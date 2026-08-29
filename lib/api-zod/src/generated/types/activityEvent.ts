@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface ActivityEvent {
+  id: string;
+  title: string;
+  detail: string;
+  timestamp: string;
+  tone: string;
 }

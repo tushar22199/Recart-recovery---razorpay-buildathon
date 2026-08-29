@@ -1,0 +1,1 @@
+- [OpenAPI integer compatibility](openapi-integer-compatibility.md) — this workspace's current generated Zod client rejects zod.int(), so integer-like values use numeric schemas.

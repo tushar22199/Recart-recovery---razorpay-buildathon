@@ -1,6 +1,6 @@
-# [Project name]
+# ReCart Recovery Console
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Merchant console for monitoring checkout abandonment, diagnosing payment failures, and running bounded Razorpay-style recovery actions.
 
 ## Run & Operate
 
@@ -22,15 +22,24 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/recart-recovery-console/src/` — React dashboard, recovery feed, detail audit trail, and guardrail settings.
+- `artifacts/api-server/src/routes/recovery.ts` — synthetic recovery API and in-memory demo state.
+- `lib/api-spec/openapi.yaml` — source-of-truth contract for summary, attempts, audit, activity, config, and simulation endpoints.
+- `lib/api-client-react/src/generated/` and `lib/api-zod/src/generated/` — generated frontend hooks and server schemas.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The first demo uses deterministic in-memory data so the full recovery loop is immediately visible without Razorpay credentials or live payment traffic.
+- Retry and configuration mutations are served by the API and invalidate the corresponding React Query caches.
+- The recovery policy is intentionally bounded: max attempts, cooldown, recovery window, and discount cap are explicit merchant controls.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Dashboard summary of recovered revenue, amount at risk, recovery rate, and attempt volume.
+- Searchable recovery attempts feed with status, failure diagnosis, channel, and retry progress.
+- Per-attempt audit trail showing detect → diagnose → act → outcome.
+- Guardrails screen for changing bounded automation policy.
+- Synthetic attempt simulation for demos and judge-facing before/after storytelling.
 
 ## User preferences
 
@@ -38,7 +47,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Re-run API codegen after editing `lib/api-spec/openapi.yaml`.
+- This workspace's generated Zod client currently emits `zod.int()` for OpenAPI `integer`; use `number` in the contract until the Zod generator version is upgraded.
 
 ## Pointers
 

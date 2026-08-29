@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "ReCart Recovery Console"
+description = "A merchant dashboard for monitoring checkout abandonment, understanding payment failures, and managing bounded recovery actions with clear revenue and audit visibility."
+version = "1.0.0"
+id = "artifacts/recart-recovery-console"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25344
+
+[services.development]
+run = "pnpm --filter @workspace/recart-recovery-console run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/recart-recovery-console", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/recart-recovery-console/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25344"
+BASE_PATH = "/"

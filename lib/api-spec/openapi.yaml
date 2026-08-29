@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: recovery
+    description: Checkout recovery operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,127 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /recovery/summary:
+    get:
+      operationId: getRecoverySummary
+      tags: [recovery]
+      summary: Get recovery dashboard summary
+      responses:
+        "200":
+          description: Recovery summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoverySummary"
+  /recovery/attempts:
+    get:
+      operationId: getRecoveryAttempts
+      tags: [recovery]
+      summary: List checkout recovery attempts
+      responses:
+        "200":
+          description: Recovery attempts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecoveryAttempt"
+  /recovery/attempts/{id}:
+    get:
+      operationId: getRecoveryAttempt
+      tags: [recovery]
+      summary: Get one recovery attempt and its audit trail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Recovery attempt detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryAttemptDetail"
+        "404":
+          description: Attempt not found
+  /recovery/attempts/{id}/retry:
+    post:
+      operationId: retryRecoveryAttempt
+      tags: [recovery]
+      summary: Trigger another bounded recovery attempt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated recovery attempt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryAttempt"
+        "400":
+          description: Retry limit reached
+  /recovery/activity:
+    get:
+      operationId: getRecoveryActivity
+      tags: [recovery]
+      summary: Get recent recovery activity
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+  /recovery/config:
+    get:
+      operationId: getRecoveryConfig
+      tags: [recovery]
+      summary: Get recovery guardrail configuration
+      responses:
+        "200":
+          description: Recovery config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryConfig"
+    patch:
+      operationId: updateRecoveryConfig
+      tags: [recovery]
+      summary: Update recovery guardrail configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecoveryConfigInput"
+      responses:
+        "200":
+          description: Updated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryConfig"
+  /recovery/simulate:
+    post:
+      operationId: simulateRecoveryAttempt
+      tags: [recovery]
+      summary: Add a synthetic checkout attempt for the demo
+      responses:
+        "201":
+          description: Updated dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationResult"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +156,105 @@ components:
           type: string
       required:
         - status
-
+    RecoverySummary:
+      type: object
+      required: [recovered, atRisk, recoveryRate, totalAttempts, recoveredCount, pendingCount, escalatedCount, trend]
+      properties:
+        recovered: { type: number }
+        atRisk: { type: number }
+        recoveryRate: { type: number }
+        totalAttempts: { type: number }
+        recoveredCount: { type: number }
+        pendingCount: { type: number }
+        escalatedCount: { type: number }
+        trend:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendPoint"
+    TrendPoint:
+      type: object
+      required: [label, recovered, atRisk]
+      properties:
+        label: { type: string }
+        recovered: { type: number }
+        atRisk: { type: number }
+    RecoveryAttempt:
+      type: object
+      required: [id, customer, email, amount, currency, failureReason, failureCode, channel, status, attempts, maxAttempts, detectedAt, lastAction, lastActionAt, paymentMethod]
+      properties:
+        id: { type: string }
+        customer: { type: string }
+        email: { type: string }
+        amount: { type: number }
+        currency: { type: string }
+        failureReason: { type: string }
+        failureCode: { type: string }
+        channel: { type: string }
+        status: { type: string }
+        attempts: { type: number }
+        maxAttempts: { type: number }
+        detectedAt: { type: string }
+        lastAction: { type: string }
+        lastActionAt: { type: string }
+        paymentMethod: { type: string }
+        recoveredAt:
+          type: ["string", "null"]
+        expiresAt:
+          type: ["string", "null"]
+    RecoveryAttemptDetail:
+      allOf:
+        - $ref: "#/components/schemas/RecoveryAttempt"
+        - type: object
+          required: [audit]
+          properties:
+            audit:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditEvent"
+    AuditEvent:
+      type: object
+      required: [id, type, title, description, timestamp, actor]
+      properties:
+        id: { type: string }
+        type: { type: string }
+        title: { type: string }
+        description: { type: string }
+        timestamp: { type: string }
+        actor: { type: string }
+        meta:
+          type: ["string", "null"]
+    ActivityEvent:
+      type: object
+      required: [id, title, detail, timestamp, tone]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        detail: { type: string }
+        timestamp: { type: string }
+        tone: { type: string }
+    RecoveryConfig:
+      type: object
+      required: [maxAttempts, cooldownMinutes, windowHours, discountCap, enabled]
+      properties:
+        maxAttempts: { type: number }
+        cooldownMinutes: { type: number }
+        windowHours: { type: number }
+        discountCap: { type: number }
+        enabled: { type: boolean }
+    RecoveryConfigInput:
+      type: object
+      required: [maxAttempts, cooldownMinutes, windowHours, discountCap, enabled]
+      properties:
+        maxAttempts: { type: number }
+        cooldownMinutes: { type: number }
+        windowHours: { type: number }
+        discountCap: { type: number }
+        enabled: { type: boolean }
+    SimulationResult:
+      type: object
+      required: [attempt, summary]
+      properties:
+        attempt:
+          $ref: "#/components/schemas/RecoveryAttempt"
+        summary:
+          $ref: "#/components/schemas/RecoverySummary"
