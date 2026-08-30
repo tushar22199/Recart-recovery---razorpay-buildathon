@@ -15,6 +15,31 @@ import {
 } from "@workspace/api-client-react";
 import { ActivityList, AppShell, AttemptsTable, ConfigSummary, MetricCard, PageIntro, QueryState, formatMoney, relativeTime } from "@/components/recovery-ui";
 
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const existing = document.querySelector(
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
+    );
+
+    if (existing) {
+      existing.addEventListener("load", () => resolve(true));
+      existing.addEventListener("error", () => resolve(false));
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 export default function RecoveryPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -31,8 +56,71 @@ export default function RecoveryPage() {
   const error = summaryQuery.isError || attemptsQuery.isError || activityQuery.isError;
   const refresh = () => { void queryClient.invalidateQueries({ queryKey: getGetRecoverySummaryQueryKey() }); void queryClient.invalidateQueries({ queryKey: getGetRecoveryAttemptsQueryKey() }); void queryClient.invalidateQueries({ queryKey: getGetRecoveryActivityQueryKey() }); void queryClient.invalidateQueries({ queryKey: getGetRecoveryConfigQueryKey() }); };
   const runSimulation = () => simulate.mutate(undefined, { onSuccess: () => refresh() });
+  const [razorpayLoading, setRazorpayLoading] = useState(false);
+
+  const openRazorpayTestPayment = async () => {
+    try {
+      setRazorpayLoading(true);
+
+      const loaded = await loadRazorpayScript();
+
+      if (!loaded) {
+        throw new Error("Could not load Razorpay Checkout");
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || ""}/api/razorpay/test-order`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ amount: 50000 }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Could not create Razorpay test order");
+      }
+
+      const order = await response.json();
+
+      const razorpay = new window.Razorpay({
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: "ReCart",
+        description: "Revenue Recovery Test Payment",
+        order_id: order.id,
+        handler: () => {
+          void refresh();
+        },
+        modal: {
+          ondismiss: () => {
+            setRazorpayLoading(false);
+          },
+        },
+        theme: {
+          color: "#111827",
+        },
+      });
+
+      razorpay.open();
+    } catch (error) {
+      console.error("Razorpay checkout failed:", error);
+      setRazorpayLoading(false);
+    }
+  };
   return <AppShell><div className="dashboard-grid grid-wash">
-    <PageIntro eyebrow="Tuesday, 24 September 2024 · Live workspace" title="Revenue, recovered." description="A clear view of every checkout that still has a second chance." action={<div className="intro-actions"><button data-testid="button-refresh-dashboard" className="icon-button bordered" onClick={refresh} title="Refresh data"><RefreshCw size={16} /></button><button data-testid="button-simulate-attempt" className="button button-dark" onClick={runSimulation} disabled={simulate.isPending}><Plus size={15} />{simulate.isPending ? "Adding..." : "Simulate attempt"}</button></div>} />
+    <PageIntro eyebrow="Tuesday, 24 September 2024 · Live workspace" title="Revenue, recovered." description="A clear view of every checkout that still has a second chance." action={<div className="intro-actions"><button data-testid="button-refresh-dashboard" className="icon-button bordered" onClick={refresh} title="Refresh data"><RefreshCw size={16} /></button><button data-testid="button-simulate-attempt" className="button button-dark" onClick={runSimulation} disabled={simulate.isPending}><Plus size={15} />{simulate.isPending ? "Adding..." : "Simulate attempt"}</button>
+    <button
+      data-testid="button-test-razorpay"
+      className="button button-primary"
+      onClick={openRazorpayTestPayment}
+      disabled={razorpayLoading}
+    >
+      {razorpayLoading ? "Opening..." : "Test Razorpay Payment"}
+    </button></div>} />
     {error && <div className="mb-5"><QueryState error onRetry={refresh}>{null}</QueryState></div>}
     <QueryState loading={summaryQuery.isLoading} error={false}><div className="metrics-grid">
       <MetricCard label="Recovered" value={formatMoney(summary?.recovered || 0)} note="this recovery window" accent="saffron" icon={TrendingUp} />
