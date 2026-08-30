@@ -266,6 +266,17 @@ router.post("/webhooks/razorpay", async (req, res) => {
 
       if (existing.length > 0) {
         const attempt = existing[0];
+        if (
+          attempt.status === "recovered" &&
+          attempt.razorpayPaymentId === payment.id
+        ) {
+          return res.status(200).json({
+            received: true,
+            processed: false,
+            duplicate: true,
+          });
+        }
+        
         const now = new Date();
 
         await db
