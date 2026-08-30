@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { ArrowUpRight, Filter, Plus, RefreshCw, Search, ShieldCheck, TrendingUp } from "lucide-react";
@@ -57,6 +57,27 @@ export default function RecoveryPage() {
   const refresh = () => { void queryClient.invalidateQueries({ queryKey: getGetRecoverySummaryQueryKey() }); void queryClient.invalidateQueries({ queryKey: getGetRecoveryAttemptsQueryKey() }); void queryClient.invalidateQueries({ queryKey: getGetRecoveryActivityQueryKey() }); void queryClient.invalidateQueries({ queryKey: getGetRecoveryConfigQueryKey() }); };
   const runSimulation = () => simulate.mutate(undefined, { onSuccess: () => refresh() });
   const [razorpayLoading, setRazorpayLoading] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const liveDateTime = currentTime.toLocaleString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
 
   const openRazorpayRecoveryPayment = async (
     attempt: (typeof filteredAttempts)[number],
@@ -115,8 +136,10 @@ export default function RecoveryPage() {
       setRazorpayLoading(false);
     }
   };
-  return <AppShell><div className="dashboard-grid grid-wash">
-    <PageIntro eyebrow="Tuesday, 24 September 2024 · Live workspace" title="Revenue, recovered." description="A clear view of every checkout that still has a second chance." action={<div className="intro-actions"><button data-testid="button-refresh-dashboard" className="icon-button bordered" onClick={refresh} title="Refresh data"><RefreshCw size={16} /></button><button data-testid="button-simulate-attempt" className="button button-dark" onClick={runSimulation} disabled={simulate.isPending}><Plus size={15} />{simulate.isPending ? "Adding..." : "Simulate attempt"}</button>
+  return <AppShell>
+    <div className="dashboard-grid grid-wash">
+      <PageIntro
+        eyebrow={`${liveDateTime} · Live workspace`}title="Revenue, recovered." description="A clear view of every checkout that still has a second chance." action={<div className="intro-actions"><button data-testid="button-refresh-dashboard" className="icon-button bordered" onClick={refresh} title="Refresh data"><RefreshCw size={16} /></button><button data-testid="button-simulate-attempt" className="button button-dark" onClick={runSimulation} disabled={simulate.isPending}><Plus size={15} />{simulate.isPending ? "Adding..." : "Simulate attempt"}</button>
     <button
       data-testid="button-test-razorpay"
       className="button button-primary"
