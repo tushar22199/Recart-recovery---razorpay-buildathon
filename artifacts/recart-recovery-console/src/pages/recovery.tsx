@@ -199,16 +199,7 @@ export default function RecoveryPage() {
     <div className="dashboard-grid grid-wash">
       <PageIntro
         eyebrow={`${liveDateTime} · Live workspace`}title="Revenue, recovered." description="A clear view of every checkout that still has a second chance." action={<div className="intro-actions"><button data-testid="button-refresh-dashboard" className="icon-button bordered" onClick={refresh} title="Refresh data"><RefreshCw size={16} /></button><button data-testid="button-simulate-attempt" className="button button-dark" onClick={runSimulation} disabled={simulate.isPending}><Plus size={15} />{simulate.isPending ? "Adding..." : "Simulate attempt"}</button>
-    <button
-      data-testid="button-test-razorpay"
-      className="button button-primary"
-      onClick={() => {
-        void openRazorpayTestPayment();
-      }}
-      disabled={razorpayLoading}
-    >
-      {razorpayLoading ? "Opening..." : "Test Razorpay Payment"}
-    </button></div>} />
+    </div>} />
     {error && <div className="mb-5"><QueryState error onRetry={refresh}>{null}</QueryState></div>}
     <QueryState loading={summaryQuery.isLoading} error={false}><div className="metrics-grid">
       <MetricCard label="Recovered" value={formatMoney(summary?.recovered || 0)} note="this recovery window" accent="saffron" icon={TrendingUp} />
@@ -217,7 +208,11 @@ export default function RecoveryPage() {
       <MetricCard label="Total attempts" value={(summary?.totalAttempts || 0).toLocaleString("en-IN")} note={`${summary?.escalatedCount || 0} escalated`} accent="navy" />
     </div></QueryState>
     <div className="content-columns">
-      <section className="panel attempts-panel animate-rise-in animate-delay-1"><div className="panel-head"><div><div className="eyebrow">Needs a nudge</div><h2>Recovery attempts</h2></div><div className="panel-head-actions"><div className="search-box"><Search size={15} /><input data-testid="input-search-attempts" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search attempts" /></div><button data-testid="button-filter-attempts" className="icon-button bordered" title="Filter attempts"><Filter size={15} /></button></div></div><div className="table-meta"><span>{filteredAttempts.length} open attempts</span><span className="meta-rule" /><span className="meta-muted">Sorted by risk</span></div><QueryState loading={attemptsQuery.isLoading} error={attemptsQuery.isError} empty={!attemptsQuery.isLoading && !attemptsQuery.isError && attempts.length === 0} onRetry={() => void attemptsQuery.refetch()}><AttemptsTable attempts={attempts} onSelect={(id) => setLocation(`/attempts/${id}`)} /></QueryState><div className="panel-foot"><span className="muted">Showing {attempts.length} of {filteredAttempts.length}</span><button data-testid="button-view-all-attempts" className="text-button" onClick={() => setShowAll((value) => !value)}>{showAll ? "Show less" : "View all attempts"} <ArrowUpRight size={14} /></button></div></section>
+      <section className="panel attempts-panel animate-rise-in animate-delay-1"><div className="panel-head"><div><div className="eyebrow">Needs a nudge</div><h2>Recovery attempts</h2></div><div className="panel-head-actions"><div className="search-box"><Search size={15} /><input data-testid="input-search-attempts" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search attempts" /></div><button data-testid="button-filter-attempts" className="icon-button bordered" title="Filter attempts"><Filter size={15} /></button></div></div><div className="table-meta"><span>{filteredAttempts.length} open attempts</span><span className="meta-rule" /><span className="meta-muted">Sorted by risk</span></div><QueryState loading={attemptsQuery.isLoading} error={attemptsQuery.isError} empty={!attemptsQuery.isLoading && !attemptsQuery.isError && attempts.length === 0} onRetry={() => void attemptsQuery.refetch()}><AttemptsTable
+        attempts={attempts}
+        onSelect={(id) => setLocation(`/attempts/${id}`)}
+        onPay={(attempt) => void openRazorpayRecoveryPayment(attempt)}
+      /></QueryState><div className="panel-foot"><span className="muted">Showing {attempts.length} of {filteredAttempts.length}</span><button data-testid="button-view-all-attempts" className="text-button" onClick={() => setShowAll((value) => !value)}>{showAll ? "Show less" : "View all attempts"} <ArrowUpRight size={14} /></button></div></section>
       <aside className="right-column"><section className="panel activity-panel animate-rise-in animate-delay-2"><div className="panel-head"><div><div className="eyebrow">System pulse</div><h2>Recent activity</h2></div><span className="live-badge"><span className="live-dot" />Live</span></div><QueryState loading={activityQuery.isLoading} error={activityQuery.isError} empty={!activityQuery.isLoading && !activityQuery.isError && !activityQuery.data?.length} onRetry={() => void activityQuery.refetch()}><ActivityList events={(activityQuery.data || []).slice(0, 6)} /></QueryState><div className="panel-foot"><span className="muted">{activityQuery.data?.length || 0} events today</span><span className="mono text-[10px] opacity-60">{relativeTime(activityQuery.data?.[0]?.timestamp)}</span></div></section><section className="animate-rise-in animate-delay-3"><ConfigSummary config={configQuery.data} onEdit={() => setLocation("/settings")} /></section></aside>
     </div>
   </div></AppShell>;

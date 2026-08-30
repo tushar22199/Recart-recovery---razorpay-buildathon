@@ -120,8 +120,126 @@ export function MetricCard({ label, value, note, accent = "saffron", icon: Icon 
   return <div className={`metric-card metric-${accent} animate-rise-in`}><div className="metric-top"><span className="metric-label">{label}</span><span className="metric-icon"><Icon size={16} /></span></div><div data-testid={`metric-${label.toLowerCase().replace(/\s/g, "-")}`} className="metric-value">{value}</div><div className="metric-note">{note}</div></div>;
 }
 
-export function AttemptsTable({ attempts, onSelect }: { attempts: RecoveryAttempt[]; onSelect?: (id: string) => void }) {
-  return <div className="table-shell"><div className="table-scroll"><table><thead><tr><th>Customer</th><th>Failure</th><th>Value</th><th>Channel</th><th>Progress</th><th>Status</th><th>Last activity</th><th /></tr></thead><tbody>{attempts.map((attempt) => <tr key={attempt.id} data-testid={`row-attempt-${attempt.id}`} className="table-row-clickable" onClick={() => onSelect?.(attempt.id)}><td><div className="customer-cell"><div className="customer-avatar">{attempt.customer.slice(0, 1).toUpperCase()}</div><div><div className="customer-name">{attempt.customer}</div><div className="customer-email">{attempt.email}</div></div></div></td><td><div className="failure-reason">{attempt.failureReason}</div><div className="failure-code mono">{attempt.failureCode}</div></td><td><strong>{formatMoney(attempt.amount, attempt.currency)}</strong></td><td><span className="channel-cell"><span className="channel-dot" />{attempt.channel}</span></td><td><div className="progress-copy"><span>{attempt.attempts} of {attempt.maxAttempts}</span><span className="muted">tries</span></div><div className="mini-progress"><span style={{ width: `${Math.min(100, (attempt.attempts / Math.max(1, attempt.maxAttempts)) * 100)}%` }} /></div></td><td><StatusPill status={attempt.status} /></td><td><span className="last-action">{attempt.lastAction}</span><span className="last-time">{relativeTime(attempt.lastActionAt)}</span></td><td><ArrowUpRight size={16} className="row-arrow" /></td></tr>)}</tbody></table></div></div>;
+export function AttemptsTable({
+  attempts,
+  onSelect,
+  onPay,
+}: {
+  attempts: RecoveryAttempt[];
+  onSelect?: (id: string) => void;
+  onPay?: (attempt: RecoveryAttempt) => void;
+}) {
+  return (
+    <div className="table-shell">
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Failure</th>
+              <th>Value</th>
+              <th>Channel</th>
+              <th>Progress</th>
+              <th>Status</th>
+              <th>Last activity</th>
+              <th />
+            </tr>
+          </thead>
+
+          <tbody>
+            {attempts.map((attempt) => (
+              <tr
+                key={attempt.id}
+                data-testid={`row-attempt-${attempt.id}`}
+                className="table-row-clickable"
+                onClick={() => onSelect?.(attempt.id)}
+              >
+                <td>
+                  <div className="customer-cell">
+                    <div className="customer-avatar">
+                      {attempt.customer.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="customer-name">{attempt.customer}</div>
+                      <div className="customer-email">{attempt.email}</div>
+                    </div>
+                  </div>
+                </td>
+
+                <td>
+                  <div className="failure-reason">{attempt.failureReason}</div>
+                  <div className="failure-code mono">{attempt.failureCode}</div>
+                </td>
+
+                <td>
+                  <strong>{formatMoney(attempt.amount, attempt.currency)}</strong>
+                </td>
+
+                <td>
+                  <span className="channel-cell">
+                    <span className="channel-dot" />
+                    {attempt.channel}
+                  </span>
+                </td>
+
+                <td>
+                  <div className="progress-copy">
+                    <span>
+                      {attempt.attempts} of {attempt.maxAttempts}
+                    </span>
+                    <span className="muted">tries</span>
+                  </div>
+
+                  <div className="mini-progress">
+                    <span
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (attempt.attempts /
+                            Math.max(1, attempt.maxAttempts)) *
+                            100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </td>
+
+                <td>
+                  <StatusPill status={attempt.status} />
+                </td>
+
+                <td>
+                  <span className="last-action">{attempt.lastAction}</span>
+                  <span className="last-time">
+                    {relativeTime(attempt.lastActionAt)}
+                  </span>
+                </td>
+
+                <td>
+                  {attempt.razorpayOrderId &&
+                  attempt.status !== "recovered" ? (
+                    <button
+                      type="button"
+                      className="button button-primary"
+                      data-testid={`button-pay-${attempt.id}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onPay?.(attempt);
+                      }}
+                    >
+                      Pay
+                    </button>
+                  ) : (
+                    <ArrowUpRight size={16} className="row-arrow" />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 export function ActivityList({ events }: { events: ActivityEvent[] }) {
