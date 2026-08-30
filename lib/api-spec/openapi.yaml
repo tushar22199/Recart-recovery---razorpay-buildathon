@@ -179,32 +179,32 @@ components:
         recovered: { type: number }
         atRisk: { type: number }
     RecoveryAttempt:
-      type: object
-      required: [id, customer, email, amount, currency, failureReason, failureCode, channel, status, attempts, maxAttempts, detectedAt, lastAction, lastActionAt, paymentMethod]
-      properties:
-        id: { type: string }
-        customer: { type: string }
-        email: { type: string }
-        amount: { type: number }
-        currency: { type: string }
-        failureReason: { type: string }
-        failureCode: { type: string }
-        channel: { type: string }
-        status: { type: string }
-        attempts: { type: number }
-        maxAttempts: { type: number }
-        detectedAt: { type: string }
-        lastAction: { type: string }
-        lastActionAt: { type: string }
-        paymentMethod: { type: string }
-        recoveredAt:
-          type: ["string", "null"]
-        expiresAt:
-          type: ["string", "null"]
-                  razorpayOrderId:
-                    type: ["string", "null"]
-                  razorpayPaymentId:
-                    type: ["string", "null"]
+            type: object
+            required: [id, customer, email, amount, currency, failureReason, failureCode, channel, status, attempts, maxAttempts, detectedAt, lastAction, lastActionAt, paymentMethod]
+            properties:
+              id: { type: string }
+              customer: { type: string }
+              email: { type: string }
+              amount: { type: number }
+              currency: { type: string }
+              failureReason: { type: string }
+              failureCode: { type: string }
+              channel: { type: string }
+              status: { type: string }
+              attempts: { type: number }
+              maxAttempts: { type: number }
+              detectedAt: { type: string }
+              lastAction: { type: string }
+              lastActionAt: { type: string }
+              paymentMethod: { type: string }
+              recoveredAt:
+                type: ["string", "null"]
+              expiresAt:
+                type: ["string", "null"]
+              razorpayOrderId:
+                type: ["string", "null"]
+              razorpayPaymentId:
+                type: ["string", "null"]
     RecoveryAttemptDetail:
       allOf:
         - $ref: "#/components/schemas/RecoveryAttempt"

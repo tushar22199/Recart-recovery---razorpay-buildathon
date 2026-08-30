@@ -46,6 +46,10 @@ export interface RecoveryAttempt {
   recoveredAt?: string | null;
   /** @nullable */
   expiresAt?: string | null;
+  /** @nullable */
+  razorpayOrderId?: string | null;
+  /** @nullable */
+  razorpayPaymentId?: string | null;
 }
 
 export interface AuditEvent {

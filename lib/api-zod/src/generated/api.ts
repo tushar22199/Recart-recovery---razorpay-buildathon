@@ -56,7 +56,9 @@ export const GetRecoveryAttemptsResponseItem = zod.object({
   "lastActionAt": zod.string(),
   "paymentMethod": zod.string(),
   "recoveredAt": zod.string().nullish(),
-  "expiresAt": zod.string().nullish()
+  "expiresAt": zod.string().nullish(),
+  "razorpayOrderId": zod.string().nullish(),
+  "razorpayPaymentId": zod.string().nullish()
 })
 export const GetRecoveryAttemptsResponse = zod.array(GetRecoveryAttemptsResponseItem)
 
@@ -85,7 +87,9 @@ export const GetRecoveryAttemptResponse = zod.object({
   "lastActionAt": zod.string(),
   "paymentMethod": zod.string(),
   "recoveredAt": zod.string().nullish(),
-  "expiresAt": zod.string().nullish()
+  "expiresAt": zod.string().nullish(),
+  "razorpayOrderId": zod.string().nullish(),
+  "razorpayPaymentId": zod.string().nullish()
 }).and(zod.object({
   "audit": zod.array(zod.object({
   "id": zod.string(),
@@ -195,7 +199,9 @@ export const SimulateRecoveryAttemptResponse = zod.object({
   "lastActionAt": zod.string(),
   "paymentMethod": zod.string(),
   "recoveredAt": zod.string().nullish(),
-  "expiresAt": zod.string().nullish()
+  "expiresAt": zod.string().nullish(),
+  "razorpayOrderId": zod.string().nullish(),
+  "razorpayPaymentId": zod.string().nullish()
 }),
   "summary": zod.object({
   "recovered": zod.number(),

@@ -58,8 +58,14 @@ export default function RecoveryPage() {
   const runSimulation = () => simulate.mutate(undefined, { onSuccess: () => refresh() });
   const [razorpayLoading, setRazorpayLoading] = useState(false);
 
-  const openRazorpayTestPayment = async () => {
+  const openRazorpayRecoveryPayment = async (
+    attempt: (typeof filteredAttempts)[number],
+  ) => {
     try {
+      if (!attempt.razorpayOrderId) {
+        throw new Error("No Razorpay recovery order exists for this attempt");
+      }
+
       setRazorpayLoading(true);
 
       const loaded = await loadRazorpayScript();
@@ -69,18 +75,11 @@ export default function RecoveryPage() {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || ""}/api/razorpay/test-order`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ amount: 50000 }),
-        },
+        `${import.meta.env.VITE_API_URL || ""}/api/razorpay/recovery-order/${attempt.id}`,
       );
 
       if (!response.ok) {
-        throw new Error("Could not create Razorpay test order");
+        throw new Error("Could not load Razorpay recovery order");
       }
 
       const order = await response.json();
@@ -90,9 +89,14 @@ export default function RecoveryPage() {
         amount: order.amount,
         currency: order.currency,
         name: "ReCart",
-        description: "Revenue Recovery Test Payment",
+        description: "ReCart Revenue Recovery",
         order_id: order.id,
+        prefill: {
+          name: attempt.customer,
+          email: attempt.email,
+        },
         handler: () => {
+          setRazorpayLoading(false);
           void refresh();
         },
         modal: {
@@ -107,7 +111,7 @@ export default function RecoveryPage() {
 
       razorpay.open();
     } catch (error) {
-      console.error("Razorpay checkout failed:", error);
+      console.error("Razorpay recovery checkout failed:", error);
       setRazorpayLoading(false);
     }
   };
@@ -116,7 +120,12 @@ export default function RecoveryPage() {
     <button
       data-testid="button-test-razorpay"
       className="button button-primary"
-      onClick={openRazorpayTestPayment}
+      onClick={() => {
+        const attempt = filteredAttempts.find((a) => a.razorpayOrderId);
+        if (attempt) {
+          void openRazorpayRecoveryPayment(attempt);
+        }
+      }}
       disabled={razorpayLoading}
     >
       {razorpayLoading ? "Opening..." : "Test Razorpay Payment"}
