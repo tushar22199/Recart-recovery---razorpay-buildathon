@@ -6,6 +6,7 @@ import {
 } from "@workspace/db/schema";
 import { Router, type IRouter } from "express";
 import { desc, eq } from "drizzle-orm";
+import Razorpay from "razorpay";
 import {
   GetRecoveryActivityResponse,
   GetRecoveryAttemptParams,
@@ -59,7 +60,19 @@ type Config = {
 };
 
 const router: IRouter = Router();
+function getRazorpayClient(): Razorpay {
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
+  if (!keyId || !keySecret) {
+    throw new Error("Razorpay API keys are not configured");
+  }
+
+  return new Razorpay({
+    key_id: keyId,
+    key_secret: keySecret,
+  });
+}
 const blueprints = [
   {
     customer: "Aarav Mehta",
@@ -525,6 +538,17 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
 
   const timestamp = new Date();
   const nextAttempts = existing.attempts + 1;
+  const razorpay = getRazorpayClient();
+
+  const order = await razorpay.orders.create({
+    amount: Math.round(existing.amount * 100),
+    currency: existing.currency,
+    receipt: `recart_recovery_${id}_${nextAttempts}`,
+    notes: {
+      recoveryAttemptId: id,
+      source: "ReCart AI Revenue Recovery",
+    },
+  });
   const nextChannel = nextAttempts % 2 === 0
     ? "WhatsApp"
     : "Email";
@@ -538,6 +562,7 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
       lastAction: "Fresh payment link generated",
       lastActionAt: timestamp,
       expiresAt: hoursFromNow(config.windowHours),
+      razorpayOrderId: order.id,
     })
     .where(eq(recoveryAttempts.id, id));
 

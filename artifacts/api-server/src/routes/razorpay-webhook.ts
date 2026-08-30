@@ -41,7 +41,7 @@ function verifyWebhookSignature(
     .update(body)
     .digest("hex");
 
-  const received = Buffer.from(receivedSignature, "utf8");
+  const received = Buffer.from(receivedSignature.trim(), "utf8");
   const expected = Buffer.from(expectedSignature, "utf8");
 
   if (received.length !== expected.length) {
@@ -56,6 +56,7 @@ router.post("/webhooks/razorpay", async (req, res) => {
 
   if (!secret) {
     console.error("RAZORPAY_WEBHOOK_SECRET is not configured");
+
     return res.status(500).json({
       error: "Webhook secret is not configured",
     });
@@ -70,12 +71,26 @@ router.post("/webhooks/razorpay", async (req, res) => {
   }
 
   if (!Buffer.isBuffer(req.body)) {
+    console.error(
+      "Razorpay webhook body is not a Buffer. Check express.raw() middleware order.",
+    );
+
     return res.status(400).json({
       error: "Webhook body was not received as raw data",
     });
   }
 
+  /*
+   * Razorpay signs the EXACT raw request body.
+   * Do not JSON.stringify(), parse and re-stringify, or otherwise modify it
+   * before signature verification.
+   */
   if (!verifyWebhookSignature(req.body, signature, secret)) {
+    console.error("Invalid Razorpay webhook signature", {
+      bodyLength: req.body.length,
+      signatureLength: signature.length,
+    });
+
     return res.status(400).json({
       error: "Invalid Razorpay webhook signature",
     });
@@ -95,17 +110,13 @@ router.post("/webhooks/razorpay", async (req, res) => {
 
   console.log(
     JSON.stringify({
+      message: "Razorpay webhook received",
       event: event.event,
       eventId,
+      bodyLength: req.body.length,
     }),
   );
 
-  /*
-   * We only process the payment events needed by ReCart.
-   *
-   * Other valid Razorpay events receive a successful response
-   * without changing recovery state.
-   */
   if (
     event.event !== "payment.failed" &&
     event.event !== "payment.captured"
@@ -125,6 +136,11 @@ router.post("/webhooks/razorpay", async (req, res) => {
   }
 
   try {
+    /*
+     * PAYMENT FAILED
+     *
+     * Create a new recovery attempt for the failed payment.
+     */
     if (event.event === "payment.failed") {
       const existing = await db
         .select()
@@ -141,20 +157,25 @@ router.post("/webhooks/razorpay", async (req, res) => {
       }
 
       const now = new Date();
-
       const id = `rp_${payment.id}`;
 
       const inserted = await db
         .insert(recoveryAttempts)
         .values({
           id,
-          customer: payment.email ?? payment.contact ?? "Razorpay customer",
+          customer:
+            payment.email ??
+            payment.contact ??
+            "Razorpay customer",
           email: payment.email ?? "",
           amount: String((payment.amount ?? 0) / 100),
           currency: payment.currency ?? "INR",
           failureReason:
-            payment.error_description ?? "Razorpay payment failed",
-          failureCode: payment.error_code ?? "payment_failed",
+            payment.error_description ??
+            "Razorpay payment failed",
+          failureCode:
+            payment.error_code ??
+            "payment_failed",
           channel: payment.method ?? "unknown",
           status: "pending",
           attempts: 1,
@@ -163,7 +184,9 @@ router.post("/webhooks/razorpay", async (req, res) => {
           lastAction: "Payment failure detected",
           lastActionAt: now,
           paymentMethod: payment.method ?? "unknown",
-          expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+          expiresAt: new Date(
+            now.getTime() + 24 * 60 * 60 * 1000,
+          ),
           razorpayPaymentId: payment.id,
           razorpayOrderId: payment.order_id ?? null,
         })
@@ -178,13 +201,16 @@ router.post("/webhooks/razorpay", async (req, res) => {
         title: "Payment failure detected",
         description:
           payment.error_description ??
-          `Razorpay reported ${payment.error_code ?? "payment_failed"}.`,
+          `Razorpay reported ${
+            payment.error_code ?? "payment_failed"
+          }.`,
         timestamp: now,
         actor: "Razorpay webhook",
         meta: JSON.stringify({
           event: event.event,
           eventId,
           paymentId: payment.id,
+          orderId: payment.order_id,
         }),
       });
 
@@ -193,16 +219,50 @@ router.post("/webhooks/razorpay", async (req, res) => {
           message: "Recovery attempt created",
           recoveryAttemptId: attempt.id,
           paymentId: payment.id,
+          orderId: payment.order_id,
         }),
       );
     }
 
+    /*
+     * PAYMENT CAPTURED
+     *
+     * IMPORTANT:
+     * The successful payment can have a different payment ID from the
+     * failed payment. Therefore we first match by Razorpay order ID.
+     */
     if (event.event === "payment.captured") {
-      const existing = await db
-        .select()
-        .from(recoveryAttempts)
-        .where(eq(recoveryAttempts.razorpayPaymentId, payment.id))
-        .limit(1);
+      const findByOrderId = payment.order_id
+        ? await db
+            .select()
+            .from(recoveryAttempts)
+            .where(
+              eq(
+                recoveryAttempts.razorpayOrderId,
+                payment.order_id,
+              ),
+            )
+            .limit(1)
+        : [];
+
+      let existing = findByOrderId;
+
+      if (existing.length === 0) {
+        existing = await db
+          .select()
+          .from(recoveryAttempts)
+          .where(
+            eq(
+              recoveryAttempts.razorpayPaymentId,
+              payment.id,
+            ),
+          )
+          .limit(1);
+      }
+
+      /*
+       * Fallback for older records where order_id was not stored.
+       */
 
       if (existing.length > 0) {
         const attempt = existing[0];
@@ -215,23 +275,47 @@ router.post("/webhooks/razorpay", async (req, res) => {
             recoveredAt: now,
             lastAction: "Payment captured",
             lastActionAt: now,
+            razorpayPaymentId: payment.id,
+            razorpayOrderId:
+              payment.order_id ??
+              attempt.razorpayOrderId,
           })
           .where(eq(recoveryAttempts.id, attempt.id));
 
         await db.insert(recoveryAuditEvents).values({
-          id: `${attempt.id}_captured_${Date.now()}`,
+          id: `${attempt.id}_captured_${payment.id}`,
           recoveryAttemptId: attempt.id,
           type: "outcome",
           title: "Payment recovered",
-          description: "Razorpay confirmed payment capture.",
+          description:
+            "Razorpay confirmed payment capture.",
           timestamp: now,
           actor: "Razorpay webhook",
           meta: JSON.stringify({
             event: event.event,
             eventId,
             paymentId: payment.id,
+            orderId: payment.order_id,
           }),
         });
+
+        console.log(
+          JSON.stringify({
+            message: "Recovery attempt marked recovered",
+            recoveryAttemptId: attempt.id,
+            paymentId: payment.id,
+            orderId: payment.order_id,
+          }),
+        );
+      } else {
+        console.log(
+          JSON.stringify({
+            message:
+              "Captured payment did not match a recovery attempt",
+            paymentId: payment.id,
+            orderId: payment.order_id,
+          }),
+        );
       }
     }
 
@@ -240,7 +324,10 @@ router.post("/webhooks/razorpay", async (req, res) => {
       processed: true,
     });
   } catch (error) {
-    console.error("Razorpay webhook processing failed", error);
+    console.error(
+      "Razorpay webhook processing failed",
+      error,
+    );
 
     return res.status(500).json({
       error: "Webhook processing failed",
