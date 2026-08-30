@@ -78,7 +78,66 @@ export default function RecoveryPage() {
     hour12: true,
     timeZone: "Asia/Kolkata",
   });
+  const openRazorpayTestPayment = async () => {
+    try {
+      setRazorpayLoading(true);
 
+      const loaded = await loadRazorpayScript();
+
+      if (!loaded) {
+        throw new Error("Could not load Razorpay Checkout");
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || ""}/api/razorpay/test-order`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            amount: 50000,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Could not create Razorpay test order");
+      }
+
+      const order = await response.json();
+
+      const razorpay = new window.Razorpay({
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: "ReCart",
+        description: "ReCart Razorpay Test Payment",
+        order_id: order.id,
+        prefill: {
+          name: "ReCart Test User",
+          email: "tusharsaini_23ce137@dtu.ac.in",
+        },
+        handler: () => {
+          setRazorpayLoading(false);
+          void refresh();
+        },
+        modal: {
+          ondismiss: () => {
+            setRazorpayLoading(false);
+          },
+        },
+        theme: {
+          color: "#111827",
+        },
+      });
+
+      razorpay.open();
+    } catch (error) {
+      console.error("Razorpay test checkout failed:", error);
+      setRazorpayLoading(false);
+    }
+  };
   const openRazorpayRecoveryPayment = async (
     attempt: (typeof filteredAttempts)[number],
   ) => {
@@ -144,10 +203,7 @@ export default function RecoveryPage() {
       data-testid="button-test-razorpay"
       className="button button-primary"
       onClick={() => {
-        const attempt = filteredAttempts.find((a) => a.razorpayOrderId);
-        if (attempt) {
-          void openRazorpayRecoveryPayment(attempt);
-        }
+        void openRazorpayTestPayment();
       }}
       disabled={razorpayLoading}
     >
