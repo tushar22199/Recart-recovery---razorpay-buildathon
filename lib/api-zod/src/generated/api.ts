@@ -123,7 +123,9 @@ export const RetryRecoveryAttemptResponse = zod.object({
   "lastActionAt": zod.string(),
   "paymentMethod": zod.string(),
   "recoveredAt": zod.string().nullish(),
-  "expiresAt": zod.string().nullish()
+  "expiresAt": zod.string().nullish(),
+  "razorpayOrderId": zod.string().nullish(),
+  "razorpayPaymentId": zod.string().nullish()
 })
 
 

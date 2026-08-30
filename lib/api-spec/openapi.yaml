@@ -201,6 +201,10 @@ components:
           type: ["string", "null"]
         expiresAt:
           type: ["string", "null"]
+                  razorpayOrderId:
+                    type: ["string", "null"]
+                  razorpayPaymentId:
+                    type: ["string", "null"]
     RecoveryAttemptDetail:
       allOf:
         - $ref: "#/components/schemas/RecoveryAttempt"

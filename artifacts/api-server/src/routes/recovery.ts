@@ -39,6 +39,8 @@ type RecoveryAttempt = {
   paymentMethod: string;
   recoveredAt: string | null;
   expiresAt: string | null;
+  razorpayOrderId: string | null;
+  razorpayPaymentId: string | null;
 };
 
 type AuditEvent = {
@@ -166,6 +168,8 @@ function toRecoveryAttempt(
     paymentMethod: row.paymentMethod ?? "",
     recoveredAt: row.recoveredAt?.toISOString() ?? null,
     expiresAt: row.expiresAt?.toISOString() ?? null,
+    razorpayOrderId: row.razorpayOrderId ?? null,
+    razorpayPaymentId: row.razorpayPaymentId ?? null,
   };
 }
 
