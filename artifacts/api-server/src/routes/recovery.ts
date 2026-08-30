@@ -5,7 +5,7 @@ import {
   recoveryConfig,
 } from "@workspace/db/schema";
 import { Router, type IRouter } from "express";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, gte } from "drizzle-orm";
 import Razorpay from "razorpay";
 import {
   GetRecoveryActivityResponse,
@@ -349,7 +349,6 @@ async function seedDatabase(): Promise<void> {
   await db.insert(recoveryAuditEvents).values(auditRows);
   await getConfig();
 }
-
 async function getSummary() {
   const attempts = await getAttempts();
 
@@ -374,21 +373,54 @@ async function getSummary() {
     (attempt) => attempt.status === "escalated",
   ).length;
 
-  const labels = [
-    "18 Aug",
-    "19 Aug",
-    "20 Aug",
-    "21 Aug",
-    "22 Aug",
-    "23 Aug",
-    "24 Aug",
-  ];
+  /*
+   * Build a real 7-day trend from recovery attempts.
+   *
+   * "Recovered" is counted on the day the payment was recovered.
+   * "At risk" is counted on the day the recovery attempt was detected.
+   */
+  const now = new Date();
+  const trend: Array<{
+    label: string;
+    recovered: number;
+    atRisk: number;
+  }> = [];
 
-  const trend = labels.map((label, index) => ({
-    label,
-    recovered: Math.round(recovered * (0.54 + index * 0.07)),
-    atRisk: Math.round(atRisk * (0.58 + index * 0.06)),
-  }));
+  for (let offset = 6; offset >= 0; offset--) {
+    const dayStart = new Date(now);
+    dayStart.setHours(0, 0, 0, 0);
+    dayStart.setDate(dayStart.getDate() - offset);
+
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const dayRecovered = attempts
+      .filter((attempt) => {
+        if (!attempt.recoveredAt) return false;
+
+        const recoveredAt = new Date(attempt.recoveredAt);
+
+        return recoveredAt >= dayStart && recoveredAt < dayEnd;
+      })
+      .reduce((total, attempt) => total + attempt.amount, 0);
+
+    const dayAtRisk = attempts
+      .filter((attempt) => {
+        const detectedAt = new Date(attempt.detectedAt);
+
+        return detectedAt >= dayStart && detectedAt < dayEnd;
+      })
+      .reduce((total, attempt) => total + attempt.amount, 0);
+
+    trend.push({
+      label: dayStart.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+      }),
+      recovered: Math.round(dayRecovered),
+      atRisk: Math.round(dayAtRisk),
+    });
+  }
 
   return {
     recovered,
