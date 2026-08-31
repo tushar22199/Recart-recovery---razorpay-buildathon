@@ -515,7 +515,62 @@ body { letter-spacing: -0.01em; }
   margin-top: 7px;
   border-radius: 3px;
 }
+.decision-panel {
+  overflow: hidden;
+}
 
+.decision-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0 22px;
+  border-top: 1px solid hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.decision-grid > div {
+  min-width: 0;
+  padding: 18px 16px 19px;
+  border-right: 1px solid hsl(var(--border));
+}
+
+.decision-grid > div:first-child {
+  padding-left: 0;
+}
+
+.decision-grid > div:last-child {
+  border-right: 0;
+  padding-right: 0;
+}
+
+.decision-grid span,
+.decision-reason > span {
+  display: block;
+  color: hsl(var(--muted-foreground));
+  font: 9px var(--app-font-mono);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.decision-grid strong {
+  display: block;
+  margin-top: 7px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -.025em;
+}
+
+.decision-reason {
+  padding: 18px 22px 21px;
+}
+
+.decision-reason p {
+  color: hsl(var(--foreground));
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 6px 0 0;
+  max-width: 720px;
+}
 .audit-panel {
   min-height: 380px;
 }
@@ -723,4 +778,24 @@ body { letter-spacing: -0.01em; }
   margin-left: 16px;
   margin-right: 16px;
 }
-@media (max-width: 700px) { .mobile-only { display: grid; }.sidebar { transform: translateX(-100%); transition: transform .25s cubic-bezier(.22,1,.36,1); box-shadow: 10px 0 30px hsl(217 31% 16% / .15); }.sidebar-open { transform: translateX(0); }.mobile-scrim { display: block; position: fixed; z-index: 25; inset: 0; background: hsl(217 31% 16% / .35); border: 0; }.main-canvas { margin-left: 0; }.topbar { height: 60px; padding: 0 18px; }.topbar-actions { gap: 10px; }.sync-status { display: none; }.crumbs { margin-left: 4px; }.page-wrap { padding: 28px 18px 50px; }.dashboard-grid { min-height: calc(100dvh - 60px); margin: -28px -18px -50px; padding: 28px 18px 50px; }.page-intro, .settings-intro, .detail-hero { display: block; }.page-intro h1, .settings-intro h1, .detail-hero h1 { font-size: 30px; }.intro-actions { margin-top: 20px; }.metrics-grid { grid-template-columns: 1fr 1fr; gap: 8px; }.metric-card { min-height: 128px; padding: 14px; }.metric-value { font-size: 24px; margin-top: 16px; }.metric-note { font-size: 9px; }.content-columns, .detail-layout, .settings-layout { grid-template-columns: 1fr; }.right-column { display: flex; }.panel-head { padding-left: 16px; padding-right: 16px; }.panel-head-actions { align-items: center; }.search-box { width: 34px; padding: 0 9px; }.search-box input { display: none; }.table-meta, .activity-list { padding-left: 16px; padding-right: 16px; }.panel-foot { padding-left: 16px; padding-right: 16px; }.detail-actions { margin-top: 20px; justify-content: space-between; }.value-panel { display: block; }.value-panel-main { border-right: 0; border-bottom: 1px solid hsl(var(--border)); }.value-side { display: grid; grid-template-columns: 1fr 1fr; padding: 20px 25px; }.audit-list { padding-left: 16px; padding-right: 16px; }.audit-title-row { display: block; }.audit-time { display: block; margin-top: 4px; }.settings-intro { margin-bottom: 25px; }.automation-state { margin-top: 19px; display: inline-flex; }.settings-section { padding: 22px 18px; }.field-grid { margin-left: 0; grid-template-columns: 1fr; gap: 18px; }.toggle-row { margin-left: 0; width: 100%; }.settings-footer { padding: 15px 18px; align-items: flex-end; flex-direction: column; }.save-actions { width: 100%; justify-content: flex-end; }.back-link { margin-bottom: 24px; } }
+@media (max-width: 700px) {
+  .decision-grid {
+    grid-template-columns: 1fr 1fr;
+    margin: 0 16px;
+  }
+
+  .decision-grid > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .decision-grid > div:nth-child(-n + 2) {
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  .decision-grid > div:nth-child(3) {
+    padding-left: 0;
+  }
+
+  .decision-grid > div:nth-child(4) {
+    padding-right: 0;
+  }.mobile-only { display: grid; }.sidebar { transform: translateX(-100%); transition: transform .25s cubic-bezier(.22,1,.36,1); box-shadow: 10px 0 30px hsl(217 31% 16% / .15); }.sidebar-open { transform: translateX(0); }.mobile-scrim { display: block; position: fixed; z-index: 25; inset: 0; background: hsl(217 31% 16% / .35); border: 0; }.main-canvas { margin-left: 0; }.topbar { height: 60px; padding: 0 18px; }.topbar-actions { gap: 10px; }.sync-status { display: none; }.crumbs { margin-left: 4px; }.page-wrap { padding: 28px 18px 50px; }.dashboard-grid { min-height: calc(100dvh - 60px); margin: -28px -18px -50px; padding: 28px 18px 50px; }.page-intro, .settings-intro, .detail-hero { display: block; }.page-intro h1, .settings-intro h1, .detail-hero h1 { font-size: 30px; }.intro-actions { margin-top: 20px; }.metrics-grid { grid-template-columns: 1fr 1fr; gap: 8px; }.metric-card { min-height: 128px; padding: 14px; }.metric-value { font-size: 24px; margin-top: 16px; }.metric-note { font-size: 9px; }.content-columns, .detail-layout, .settings-layout { grid-template-columns: 1fr; }.right-column { display: flex; }.panel-head { padding-left: 16px; padding-right: 16px; }.panel-head-actions { align-items: center; }.search-box { width: 34px; padding: 0 9px; }.search-box input { display: none; }.table-meta, .activity-list { padding-left: 16px; padding-right: 16px; }.panel-foot { padding-left: 16px; padding-right: 16px; }.detail-actions { margin-top: 20px; justify-content: space-between; }.value-panel { display: block; }.value-panel-main { border-right: 0; border-bottom: 1px solid hsl(var(--border)); }.value-side { display: grid; grid-template-columns: 1fr 1fr; padding: 20px 25px; }.audit-list { padding-left: 16px; padding-right: 16px; }.audit-title-row { display: block; }.audit-time { display: block; margin-top: 4px; }.settings-intro { margin-bottom: 25px; }.automation-state { margin-top: 19px; display: inline-flex; }.settings-section { padding: 22px 18px; }.field-grid { margin-left: 0; grid-template-columns: 1fr; gap: 18px; }.toggle-row { margin-left: 0; width: 100%; }.settings-footer { padding: 15px 18px; align-items: flex-end; flex-direction: column; }.save-actions { width: 100%; justify-content: flex-end; }.back-link { margin-bottom: 24px; } }
