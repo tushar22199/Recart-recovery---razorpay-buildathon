@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { RecoveryDecision } from './recoveryDecision';
 
 export interface RecoveryAttempt {
   id: string;
@@ -30,4 +31,5 @@ export interface RecoveryAttempt {
   razorpayOrderId?: string | null;
   /** @nullable */
   razorpayPaymentId?: string | null;
+  decision?: RecoveryDecision;
 }

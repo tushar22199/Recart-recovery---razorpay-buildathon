@@ -20,7 +20,15 @@ import {
   UpdateRecoveryConfigBody,
   UpdateRecoveryConfigResponse,
 } from "@workspace/api-zod";
-
+type RecoveryDecision = {
+  channel: "Email" | "WhatsApp";
+  delayMinutes: number;
+  incentivePercent: number;
+  shouldRecover: boolean;
+  shouldEscalate: boolean;
+  confidence: number;
+  reason: string;
+};
 type RecoveryAttempt = {
   id: string;
   customer: string;
@@ -41,6 +49,7 @@ type RecoveryAttempt = {
   expiresAt: string | null;
   razorpayOrderId: string | null;
   razorpayPaymentId: string | null;
+  decision?: RecoveryDecision;
 };
 
 type AuditEvent = {
@@ -149,6 +158,7 @@ function hoursFromNow(hours: number): Date {
 
 function toRecoveryAttempt(
   row: typeof recoveryAttempts.$inferSelect,
+   config?: Config,
 ): RecoveryAttempt {
   return {
     id: row.id,
@@ -170,6 +180,34 @@ function toRecoveryAttempt(
     expiresAt: row.expiresAt?.toISOString() ?? null,
     razorpayOrderId: row.razorpayOrderId ?? null,
     razorpayPaymentId: row.razorpayPaymentId ?? null,
+    ...(config
+      ? {
+          decision: decideRecoveryAction(
+            {
+              id: row.id,
+              customer: row.customer,
+              email: row.email,
+              amount: Number(row.amount),
+              currency: row.currency,
+              failureReason: row.failureReason,
+              failureCode: row.failureCode,
+              channel: row.channel,
+              status: row.status,
+              attempts: row.attempts,
+              maxAttempts: row.maxAttempts,
+              detectedAt: row.detectedAt.toISOString(),
+              lastAction: row.lastAction,
+              lastActionAt: row.lastActionAt.toISOString(),
+              paymentMethod: row.paymentMethod ?? "",
+              recoveredAt: row.recoveredAt?.toISOString() ?? null,
+              expiresAt: row.expiresAt?.toISOString() ?? null,
+              razorpayOrderId: row.razorpayOrderId ?? null,
+              razorpayPaymentId: row.razorpayPaymentId ?? null,
+            },
+            config,
+          ),
+        }
+      : {}),
   };
 }
 
@@ -188,14 +226,15 @@ function toAuditEvent(
 }
 
 async function getAttempts(): Promise<RecoveryAttempt[]> {
+  const config = await getConfig();
+
   const rows = await db
     .select()
     .from(recoveryAttempts)
     .orderBy(desc(recoveryAttempts.detectedAt));
 
-  return rows.map(toRecoveryAttempt);
+  return rows.map((row) => toRecoveryAttempt(row, config));
 }
-
 async function getConfig(): Promise<Config> {
   const rows = await db.select().from(recoveryConfig).limit(1);
 
@@ -216,6 +255,107 @@ async function getConfig(): Promise<Config> {
   }
 
   return rows[0];
+}
+
+
+function decideRecoveryAction(
+  attempt: RecoveryAttempt,
+  config: Config,
+): RecoveryDecision {
+  const reason = attempt.failureReason.toLowerCase();
+
+  // Hard guardrails
+  if (!config.enabled) {
+    return {
+      channel: "Email",
+      delayMinutes: 0,
+      incentivePercent: 0,
+      shouldRecover: false,
+      shouldEscalate: true,
+      confidence: 1,
+      reason: "Recovery automation is disabled by merchant policy.",
+    };
+  }
+
+  if (attempt.attempts >= Math.min(config.maxAttempts, attempt.maxAttempts)) {
+    return {
+      channel: "Email",
+      delayMinutes: 0,
+      incentivePercent: 0,
+      shouldRecover: false,
+      shouldEscalate: true,
+      confidence: 1,
+      reason: "Maximum recovery attempts reached.",
+    };
+  }
+
+  // Failure-specific strategy
+  if (
+    reason.includes("insufficient funds") ||
+    reason.includes("bank decline")
+  ) {
+    return {
+      channel: attempt.attempts >= 1 ? "WhatsApp" : "Email",
+      delayMinutes: config.cooldownMinutes,
+      incentivePercent: 0,
+      shouldRecover: true,
+      shouldEscalate: false,
+      confidence: 0.91,
+      reason: "Payment failure is recoverable with a fresh payment attempt.",
+    };
+  }
+
+  if (
+    reason.includes("otp") ||
+    reason.includes("authentication")
+  ) {
+    return {
+      channel: "WhatsApp",
+      delayMinutes: config.cooldownMinutes,
+      incentivePercent: 0,
+      shouldRecover: true,
+      shouldEscalate: false,
+      confidence: 0.88,
+      reason: "Authentication failure suggests the customer may retry successfully.",
+    };
+  }
+
+  if (
+    reason.includes("network") ||
+    reason.includes("gateway")
+  ) {
+    return {
+      channel: "Email",
+      delayMinutes: config.cooldownMinutes,
+      incentivePercent: 0,
+      shouldRecover: true,
+      shouldEscalate: false,
+      confidence: 0.86,
+      reason: "Transient gateway/network failure is suitable for another payment attempt.",
+    };
+  }
+
+  if (reason.includes("price hesitation")) {
+    return {
+      channel: "WhatsApp",
+      delayMinutes: config.cooldownMinutes,
+      incentivePercent: Math.min(config.discountCap, 5),
+      shouldRecover: true,
+      shouldEscalate: false,
+      confidence: 0.79,
+      reason: "Price hesitation may respond to a bounded incentive.",
+    };
+  }
+
+  return {
+    channel: "Email",
+    delayMinutes: config.cooldownMinutes,
+    incentivePercent: 0,
+    shouldRecover: true,
+    shouldEscalate: false,
+    confidence: 0.72,
+    reason: "Failure does not match a high-risk recovery category.",
+  };
 }
 
 async function seedDatabase(): Promise<void> {
@@ -527,7 +667,8 @@ router.get("/recovery/attempts/:id", async (req, res) => {
     return;
   }
 
-  const attempt = toRecoveryAttempt(rows[0]);
+  const config = await getConfig();
+  const attempt = toRecoveryAttempt(rows[0], config);
 
   const auditRows = await db
     .select()
@@ -574,6 +715,27 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
 
   const timestamp = new Date();
   const nextAttempts = existing.attempts + 1;
+
+  // Decide before executing any external payment action.
+  const decision = decideRecoveryAction(existing, config);
+
+  if (!decision.shouldRecover) {
+    await db
+      .update(recoveryAttempts)
+      .set({
+        status: "escalated",
+        lastAction: "Flagged for human follow-up",
+        lastActionAt: timestamp,
+      })
+      .where(eq(recoveryAttempts.id, id));
+
+    res.status(400).json({
+      error: decision.reason,
+    });
+    return;
+  }
+
+  // Only create a Razorpay order after the recovery decision passes.
   const razorpay = getRazorpayClient();
 
   const order = await razorpay.orders.create({
@@ -585,9 +747,24 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
       source: "ReCart AI Revenue Recovery",
     },
   });
-  const nextChannel = nextAttempts % 2 === 0
-    ? "WhatsApp"
-    : "Email";
+
+  if (!decision.shouldRecover) {
+    await db
+      .update(recoveryAttempts)
+      .set({
+        status: "escalated",
+        lastAction: "Flagged for human follow-up",
+        lastActionAt: new Date(),
+      })
+      .where(eq(recoveryAttempts.id, id));
+
+    res.status(400).json({
+      error: decision.reason,
+    });
+    return;
+  }
+
+  const nextChannel = decision.channel;
 
   await db
     .update(recoveryAttempts)

@@ -13,6 +13,8 @@ export * from './recoveryAttempt';
 export * from './recoveryAttemptDetail';
 export * from './recoveryConfig';
 export * from './recoveryConfigInput';
+export * from './recoveryDecision';
+export * from './recoveryDecisionChannel';
 export * from './recoverySummary';
 export * from './simulationResult';
 export * from './trendPoint';

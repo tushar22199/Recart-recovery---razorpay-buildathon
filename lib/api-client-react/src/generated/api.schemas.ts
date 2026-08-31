@@ -26,6 +26,24 @@ export interface RecoverySummary {
   trend: TrendPoint[];
 }
 
+export type RecoveryDecisionChannel = typeof RecoveryDecisionChannel[keyof typeof RecoveryDecisionChannel];
+
+
+export const RecoveryDecisionChannel = {
+  Email: 'Email',
+  WhatsApp: 'WhatsApp',
+} as const;
+
+export interface RecoveryDecision {
+  channel: RecoveryDecisionChannel;
+  delayMinutes: number;
+  incentivePercent: number;
+  shouldRecover: boolean;
+  shouldEscalate: boolean;
+  confidence: number;
+  reason: string;
+}
+
 export interface RecoveryAttempt {
   id: string;
   customer: string;
@@ -50,6 +68,7 @@ export interface RecoveryAttempt {
   razorpayOrderId?: string | null;
   /** @nullable */
   razorpayPaymentId?: string | null;
+  decision?: RecoveryDecision;
 }
 
 export interface AuditEvent {

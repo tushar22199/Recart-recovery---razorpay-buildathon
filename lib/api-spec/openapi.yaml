@@ -4,14 +4,17 @@ info:
   title: Api
   version: 0.1.0
   description: API specification
+
 servers:
   - url: /api
     description: Base API path
+
 tags:
   - name: health
     description: Health operations
   - name: recovery
     description: Checkout recovery operations
+
 paths:
   /healthz:
     get:
@@ -26,6 +29,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
   /recovery/summary:
     get:
       operationId: getRecoverySummary
@@ -38,6 +42,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RecoverySummary"
+
   /recovery/attempts:
     get:
       operationId: getRecoveryAttempts
@@ -52,6 +57,7 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/RecoveryAttempt"
+
   /recovery/attempts/{id}:
     get:
       operationId: getRecoveryAttempt
@@ -72,6 +78,7 @@ paths:
                 $ref: "#/components/schemas/RecoveryAttemptDetail"
         "404":
           description: Attempt not found
+
   /recovery/attempts/{id}/retry:
     post:
       operationId: retryRecoveryAttempt
@@ -92,6 +99,7 @@ paths:
                 $ref: "#/components/schemas/RecoveryAttempt"
         "400":
           description: Retry limit reached
+
   /recovery/activity:
     get:
       operationId: getRecoveryActivity
@@ -106,6 +114,7 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ActivityEvent"
+
   /recovery/config:
     get:
       operationId: getRecoveryConfig
@@ -118,6 +127,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RecoveryConfig"
+
     patch:
       operationId: updateRecoveryConfig
       tags: [recovery]
@@ -135,6 +145,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RecoveryConfig"
+
   /recovery/simulate:
     post:
       operationId: simulateRecoveryAttempt
@@ -147,8 +158,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SimulationResult"
+
 components:
   schemas:
+
     HealthStatus:
       type: object
       properties:
@@ -156,107 +169,253 @@ components:
           type: string
       required:
         - status
+
     RecoverySummary:
       type: object
-      required: [recovered, atRisk, recoveryRate, totalAttempts, recoveredCount, pendingCount, escalatedCount, trend]
+      required:
+        - recovered
+        - atRisk
+        - recoveryRate
+        - totalAttempts
+        - recoveredCount
+        - pendingCount
+        - escalatedCount
+        - trend
       properties:
-        recovered: { type: number }
-        atRisk: { type: number }
-        recoveryRate: { type: number }
-        totalAttempts: { type: number }
-        recoveredCount: { type: number }
-        pendingCount: { type: number }
-        escalatedCount: { type: number }
+        recovered:
+          type: number
+        atRisk:
+          type: number
+        recoveryRate:
+          type: number
+        totalAttempts:
+          type: number
+        recoveredCount:
+          type: number
+        pendingCount:
+          type: number
+        escalatedCount:
+          type: number
         trend:
           type: array
           items:
             $ref: "#/components/schemas/TrendPoint"
+
     TrendPoint:
       type: object
-      required: [label, recovered, atRisk]
+      required:
+        - label
+        - recovered
+        - atRisk
       properties:
-        label: { type: string }
-        recovered: { type: number }
-        atRisk: { type: number }
+        label:
+          type: string
+        recovered:
+          type: number
+        atRisk:
+          type: number
+
+    RecoveryDecision:
+      type: object
+      required:
+        - channel
+        - delayMinutes
+        - incentivePercent
+        - shouldRecover
+        - shouldEscalate
+        - confidence
+        - reason
+      properties:
+        channel:
+          type: string
+          enum:
+            - Email
+            - WhatsApp
+        delayMinutes:
+          type: number
+        incentivePercent:
+          type: number
+        shouldRecover:
+          type: boolean
+        shouldEscalate:
+          type: boolean
+        confidence:
+          type: number
+        reason:
+          type: string
+
     RecoveryAttempt:
-            type: object
-            required: [id, customer, email, amount, currency, failureReason, failureCode, channel, status, attempts, maxAttempts, detectedAt, lastAction, lastActionAt, paymentMethod]
-            properties:
-              id: { type: string }
-              customer: { type: string }
-              email: { type: string }
-              amount: { type: number }
-              currency: { type: string }
-              failureReason: { type: string }
-              failureCode: { type: string }
-              channel: { type: string }
-              status: { type: string }
-              attempts: { type: number }
-              maxAttempts: { type: number }
-              detectedAt: { type: string }
-              lastAction: { type: string }
-              lastActionAt: { type: string }
-              paymentMethod: { type: string }
-              recoveredAt:
-                type: ["string", "null"]
-              expiresAt:
-                type: ["string", "null"]
-              razorpayOrderId:
-                type: ["string", "null"]
-              razorpayPaymentId:
-                type: ["string", "null"]
+      type: object
+      required:
+        - id
+        - customer
+        - email
+        - amount
+        - currency
+        - failureReason
+        - failureCode
+        - channel
+        - status
+        - attempts
+        - maxAttempts
+        - detectedAt
+        - lastAction
+        - lastActionAt
+        - paymentMethod
+      properties:
+        id:
+          type: string
+        customer:
+          type: string
+        email:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        failureReason:
+          type: string
+        failureCode:
+          type: string
+        channel:
+          type: string
+        status:
+          type: string
+        attempts:
+          type: number
+        maxAttempts:
+          type: number
+        detectedAt:
+          type: string
+        lastAction:
+          type: string
+        lastActionAt:
+          type: string
+        paymentMethod:
+          type: string
+        recoveredAt:
+          type:
+            - string
+            - "null"
+        expiresAt:
+          type:
+            - string
+            - "null"
+        razorpayOrderId:
+          type:
+            - string
+            - "null"
+        razorpayPaymentId:
+          type:
+            - string
+            - "null"
+        decision:
+          $ref: "#/components/schemas/RecoveryDecision"
+
     RecoveryAttemptDetail:
       allOf:
         - $ref: "#/components/schemas/RecoveryAttempt"
         - type: object
-          required: [audit]
+          required:
+            - audit
           properties:
             audit:
               type: array
               items:
                 $ref: "#/components/schemas/AuditEvent"
+
     AuditEvent:
       type: object
-      required: [id, type, title, description, timestamp, actor]
+      required:
+        - id
+        - type
+        - title
+        - description
+        - timestamp
+        - actor
       properties:
-        id: { type: string }
-        type: { type: string }
-        title: { type: string }
-        description: { type: string }
-        timestamp: { type: string }
-        actor: { type: string }
+        id:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        timestamp:
+          type: string
+        actor:
+          type: string
         meta:
-          type: ["string", "null"]
+          type:
+            - string
+            - "null"
+
     ActivityEvent:
       type: object
-      required: [id, title, detail, timestamp, tone]
+      required:
+        - id
+        - title
+        - detail
+        - timestamp
+        - tone
       properties:
-        id: { type: string }
-        title: { type: string }
-        detail: { type: string }
-        timestamp: { type: string }
-        tone: { type: string }
+        id:
+          type: string
+        title:
+          type: string
+        detail:
+          type: string
+        timestamp:
+          type: string
+        tone:
+          type: string
+
     RecoveryConfig:
       type: object
-      required: [maxAttempts, cooldownMinutes, windowHours, discountCap, enabled]
+      required:
+        - maxAttempts
+        - cooldownMinutes
+        - windowHours
+        - discountCap
+        - enabled
       properties:
-        maxAttempts: { type: number }
-        cooldownMinutes: { type: number }
-        windowHours: { type: number }
-        discountCap: { type: number }
-        enabled: { type: boolean }
+        maxAttempts:
+          type: number
+        cooldownMinutes:
+          type: number
+        windowHours:
+          type: number
+        discountCap:
+          type: number
+        enabled:
+          type: boolean
+
     RecoveryConfigInput:
       type: object
-      required: [maxAttempts, cooldownMinutes, windowHours, discountCap, enabled]
+      required:
+        - maxAttempts
+        - cooldownMinutes
+        - windowHours
+        - discountCap
+        - enabled
       properties:
-        maxAttempts: { type: number }
-        cooldownMinutes: { type: number }
-        windowHours: { type: number }
-        discountCap: { type: number }
-        enabled: { type: boolean }
+        maxAttempts:
+          type: number
+        cooldownMinutes:
+          type: number
+        windowHours:
+          type: number
+        discountCap:
+          type: number
+        enabled:
+          type: boolean
+
     SimulationResult:
       type: object
-      required: [attempt, summary]
+      required:
+        - attempt
+        - summary
       properties:
         attempt:
           $ref: "#/components/schemas/RecoveryAttempt"
