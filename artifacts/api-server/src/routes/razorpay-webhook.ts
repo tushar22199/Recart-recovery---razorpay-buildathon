@@ -229,24 +229,38 @@ router.post("/webhooks/razorpay", async (req, res) => {
      * PAYMENT CAPTURED
      *
      * IMPORTANT:
-     * The successful payment can have a different payment ID from the
-     * failed payment. Therefore we first match by Razorpay order ID.
+     * A successful recovery payment can have a different payment ID
+     * from the failed payment. For Payment Links, match by
+     * payment_link_id first, then fall back to order ID and payment ID.
      */
     if (event.event === "payment.captured") {
-      const findByOrderId = payment.order_id
+      const findByPaymentLinkId = payment.payment_link_id
         ? await db
             .select()
             .from(recoveryAttempts)
             .where(
               eq(
-                recoveryAttempts.razorpayOrderId,
-                payment.order_id,
+                recoveryAttempts.razorpayPaymentLinkId,
+                payment.payment_link_id,
               ),
             )
             .limit(1)
         : [];
 
-      let existing = findByOrderId;
+      let existing = findByPaymentLinkId;
+
+      if (existing.length === 0 && payment.order_id) {
+        existing = await db
+          .select()
+          .from(recoveryAttempts)
+          .where(
+            eq(
+              recoveryAttempts.razorpayOrderId,
+              payment.order_id,
+            ),
+          )
+          .limit(1);
+      }
 
       if (existing.length === 0) {
         existing = await db
