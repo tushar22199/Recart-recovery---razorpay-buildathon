@@ -21,38 +21,7 @@ function getRazorpayClient(): Razorpay {
   });
 }
 
-router.post("/razorpay/test-order", async (req, res) => {
-  try {
-    const razorpay = getRazorpayClient();
 
-    const amount =
-      typeof req.body?.amount === "number" && req.body.amount > 0
-        ? Math.round(req.body.amount)
-        : 50000;
-
-    const order = await razorpay.orders.create({
-      amount,
-      currency: "INR",
-      receipt: `recart_test_${Date.now()}`,
-      notes: {
-        source: "ReCart buildathon test",
-      },
-    });
-
-    res.json({
-      id: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      keyId: process.env.RAZORPAY_KEY_ID,
-    });
-  } catch (error) {
-    console.error("Failed to create Razorpay test order", error);
-
-    res.status(500).json({
-      error: "Failed to create Razorpay test order",
-    });
-  }
-});
 router.get("/razorpay/recovery-order/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -71,22 +40,24 @@ router.get("/razorpay/recovery-order/:id", async (req, res) => {
 
     const attempt = rows[0];
 
-    if (!attempt.razorpayOrderId) {
+    if (!attempt.razorpayPaymentLinkId) {
       return res.status(400).json({
-        error: "No Razorpay recovery order exists",
+        error: "No Razorpay recovery payment link exists",
       });
     }
 
     const razorpay = getRazorpayClient();
 
-    const order = await razorpay.orders.fetch(
-      attempt.razorpayOrderId,
+    const paymentLink = await razorpay.paymentLink.fetch(
+      attempt.razorpayPaymentLinkId,
     );
 
     return res.json({
-      id: order.id,
-      amount: order.amount,
-      currency: order.currency,
+      id: paymentLink.id,
+      shortUrl: paymentLink.short_url,
+      amount: paymentLink.amount,
+      currency: paymentLink.currency,
+      status: paymentLink.status,
       keyId: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {

@@ -309,6 +309,14 @@ components:
           type:
             - string
             - "null"
+        razorpayPaymentLinkId:
+          type:
+            - string
+            - "null"
+        razorpayPaymentLinkUrl:
+          type:
+            - string
+            - "null"
         decision:
           $ref: "#/components/schemas/RecoveryDecision"
 

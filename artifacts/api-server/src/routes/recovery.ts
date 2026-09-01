@@ -49,6 +49,8 @@ type RecoveryAttempt = {
   expiresAt: string | null;
   razorpayOrderId: string | null;
   razorpayPaymentId: string | null;
+  razorpayPaymentLinkId: string | null;
+  razorpayPaymentLinkUrl: string | null;
   decision?: RecoveryDecision;
 };
 
@@ -180,6 +182,8 @@ function toRecoveryAttempt(
     expiresAt: row.expiresAt?.toISOString() ?? null,
     razorpayOrderId: row.razorpayOrderId ?? null,
     razorpayPaymentId: row.razorpayPaymentId ?? null,
+    razorpayPaymentLinkId: row.razorpayPaymentLinkId ?? null,
+    razorpayPaymentLinkUrl: row.razorpayPaymentLinkUrl ?? null,
     ...(config
       ? {
           decision: decideRecoveryAction(
@@ -203,6 +207,8 @@ function toRecoveryAttempt(
               expiresAt: row.expiresAt?.toISOString() ?? null,
               razorpayOrderId: row.razorpayOrderId ?? null,
               razorpayPaymentId: row.razorpayPaymentId ?? null,
+              razorpayPaymentLinkId: row.razorpayPaymentLinkId ?? null,
+              razorpayPaymentLinkUrl: row.razorpayPaymentLinkUrl ?? null,
             },
             config,
           ),
@@ -735,34 +741,34 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
     return;
   }
 
-  // Only create a Razorpay order after the recovery decision passes.
+  // Create Razorpay Payment Link only after the decision passes.
   const razorpay = getRazorpayClient();
 
-  const order = await razorpay.orders.create({
+  const paymentLink = await razorpay.paymentLink.create({
     amount: Math.round(existing.amount * 100),
     currency: existing.currency,
-    receipt: `recart_recovery_${id}_${nextAttempts}`,
+    accept_partial: false,
+    description: `Recovery payment for ${existing.customer}`,
+    reference_id: `recart_${id}_${nextAttempts}`.slice(0, 40),
+    customer: {
+      name: existing.customer,
+      email: existing.email || undefined,
+    },
+    notify: {
+      email: Boolean(existing.email),
+      sms: false,
+    },
+    expire_by: Math.floor(
+      hoursFromNow(config.windowHours).getTime() / 1000,
+    ),
+    reminder_enable: false,
     notes: {
       recoveryAttemptId: id,
+      recoveryAttempt: String(nextAttempts),
       source: "ReCart AI Revenue Recovery",
     },
   });
 
-  if (!decision.shouldRecover) {
-    await db
-      .update(recoveryAttempts)
-      .set({
-        status: "escalated",
-        lastAction: "Flagged for human follow-up",
-        lastActionAt: new Date(),
-      })
-      .where(eq(recoveryAttempts.id, id));
-
-    res.status(400).json({
-      error: decision.reason,
-    });
-    return;
-  }
 
   const nextChannel = decision.channel;
 
@@ -772,10 +778,11 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
       attempts: nextAttempts,
       status: "pending",
       channel: nextChannel,
-      lastAction: "Fresh payment link generated",
+      lastAction: "Recovery payment link generated",
       lastActionAt: timestamp,
       expiresAt: hoursFromNow(config.windowHours),
-      razorpayOrderId: order.id,
+      razorpayPaymentLinkId: paymentLink.id,
+      razorpayPaymentLinkUrl: paymentLink.short_url,
     })
     .where(eq(recoveryAttempts.id, id));
 
@@ -783,11 +790,13 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
     id: `${id}_retry_${nextAttempts}`,
     recoveryAttemptId: id,
     type: "action",
-    title: "Fresh payment link generated",
-    description: `Retry ${nextAttempts} of ${existing.maxAttempts} sent via ${nextChannel}.`,
+    title: "Recovery payment link generated",
+    description:
+      `Retry ${nextAttempts} of ${existing.maxAttempts} created via ${nextChannel}. ` +
+      `Razorpay Payment Link ${paymentLink.id} was generated.`,
     timestamp,
     actor: "ReCart agent",
-    meta: `cooldown: ${config.cooldownMinutes} minutes`,
+    meta: `payment_link: ${paymentLink.id}`,
   });
 
   const updatedRows = await db

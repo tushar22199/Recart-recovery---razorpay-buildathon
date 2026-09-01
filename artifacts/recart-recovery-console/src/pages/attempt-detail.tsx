@@ -73,6 +73,17 @@ export default function AttemptDetailPage() {
             <span>Reason</span>
             <p>{attempt.decision.reason}</p>
           </div>
+          {attempt.razorpayPaymentLinkUrl && (
+            <a
+              href={attempt.razorpayPaymentLinkUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="button button-outline"
+            >
+              Open recovery payment link
+              <ArrowUpRight size={14} />
+            </a>
+          )}
         </section>
       )}
       <section className="panel audit-panel animate-rise-in animate-delay-2"><div className="panel-head"><div><div className="eyebrow">Immutable record</div><h2>Audit trail</h2></div><button data-testid="button-copy-attempt-id" className="button button-quiet" onClick={() => void navigator.clipboard?.writeText(attempt.id)}><Copy size={14} /> Copy ID</button></div><div className="audit-list">{audit.length ? audit.map((event, index) => { const Icon = toneIcon(event.type); return <div key={event.id} className="audit-event"><div className={`audit-icon audit-${event.type.includes("fail") ? "danger" : event.type.includes("recover") ? "success" : "neutral"}`}><Icon size={15} /></div><div className="audit-line" /><div className="audit-body"><div className="audit-title-row"><strong>{event.title}</strong><span className="audit-time">{shortDate(event.timestamp)}</span></div><p>{event.description}</p><div className="audit-meta"><span>{event.actor}</span>{event.meta && <><span className="meta-rule" /><span className="mono">{event.meta}</span></>}</div></div></div> }) : <div className="empty-audit"><ShieldCheck size={21} /><p>No audit events recorded yet.</p></div>}</div></section>

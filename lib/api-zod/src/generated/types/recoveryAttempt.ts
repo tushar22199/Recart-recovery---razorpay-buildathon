@@ -31,5 +31,9 @@ export interface RecoveryAttempt {
   razorpayOrderId?: string | null;
   /** @nullable */
   razorpayPaymentId?: string | null;
+  /** @nullable */
+  razorpayPaymentLinkId?: string | null;
+  /** @nullable */
+  razorpayPaymentLinkUrl?: string | null;
   decision?: RecoveryDecision;
 }

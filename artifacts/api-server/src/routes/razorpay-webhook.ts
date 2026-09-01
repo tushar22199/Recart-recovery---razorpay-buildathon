@@ -19,6 +19,7 @@ type RazorpayPaymentEntity = {
   error_code?: string | null;
   error_description?: string | null;
   order_id?: string | null;
+  payment_link_id?: string | null;
 };
 
 type RazorpayWebhook = {

@@ -59,6 +59,8 @@ export const GetRecoveryAttemptsResponseItem = zod.object({
   "expiresAt": zod.string().nullish(),
   "razorpayOrderId": zod.string().nullish(),
   "razorpayPaymentId": zod.string().nullish(),
+  "razorpayPaymentLinkId": zod.string().nullish(),
+  "razorpayPaymentLinkUrl": zod.string().nullish(),
   "decision": zod.object({
   "channel": zod.enum(['Email', 'WhatsApp']),
   "delayMinutes": zod.number(),
@@ -99,6 +101,8 @@ export const GetRecoveryAttemptResponse = zod.object({
   "expiresAt": zod.string().nullish(),
   "razorpayOrderId": zod.string().nullish(),
   "razorpayPaymentId": zod.string().nullish(),
+  "razorpayPaymentLinkId": zod.string().nullish(),
+  "razorpayPaymentLinkUrl": zod.string().nullish(),
   "decision": zod.object({
   "channel": zod.enum(['Email', 'WhatsApp']),
   "delayMinutes": zod.number(),
@@ -148,6 +152,8 @@ export const RetryRecoveryAttemptResponse = zod.object({
   "expiresAt": zod.string().nullish(),
   "razorpayOrderId": zod.string().nullish(),
   "razorpayPaymentId": zod.string().nullish(),
+  "razorpayPaymentLinkId": zod.string().nullish(),
+  "razorpayPaymentLinkUrl": zod.string().nullish(),
   "decision": zod.object({
   "channel": zod.enum(['Email', 'WhatsApp']),
   "delayMinutes": zod.number(),
@@ -229,6 +235,8 @@ export const SimulateRecoveryAttemptResponse = zod.object({
   "expiresAt": zod.string().nullish(),
   "razorpayOrderId": zod.string().nullish(),
   "razorpayPaymentId": zod.string().nullish(),
+  "razorpayPaymentLinkId": zod.string().nullish(),
+  "razorpayPaymentLinkUrl": zod.string().nullish(),
   "decision": zod.object({
   "channel": zod.enum(['Email', 'WhatsApp']),
   "delayMinutes": zod.number(),
