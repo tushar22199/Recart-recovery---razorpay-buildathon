@@ -29,6 +29,12 @@ type RazorpayWebhook = {
     payment?: {
       entity?: RazorpayPaymentEntity;
     };
+    payment_link?: {
+      entity?: {
+        id?: string | null;
+        order_id?: string | null;
+      };
+    };
   };
 };
 
@@ -120,7 +126,8 @@ router.post("/webhooks/razorpay", async (req, res) => {
 
   if (
     event.event !== "payment.failed" &&
-    event.event !== "payment.captured"
+    event.event !== "payment.captured" &&
+    event.event !== "payment_link.paid"
   ) {
     return res.status(200).json({
       received: true,
@@ -233,15 +240,23 @@ router.post("/webhooks/razorpay", async (req, res) => {
      * from the failed payment. For Payment Links, match by
      * payment_link_id first, then fall back to order ID and payment ID.
      */
-    if (event.event === "payment.captured") {
-      const findByPaymentLinkId = payment.payment_link_id
+    if (
+      event.event === "payment.captured" ||
+      event.event === "payment_link.paid"
+    ) {
+      const paymentLinkId =
+        payment.payment_link_id ??
+        event.payload?.payment_link?.entity?.id ??
+        null;
+
+      const findByPaymentLinkId = paymentLinkId
         ? await db
             .select()
             .from(recoveryAttempts)
             .where(
               eq(
                 recoveryAttempts.razorpayPaymentLinkId,
-                payment.payment_link_id,
+                paymentLinkId,
               ),
             )
             .limit(1)
