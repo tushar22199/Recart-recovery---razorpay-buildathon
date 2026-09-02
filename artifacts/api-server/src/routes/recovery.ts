@@ -815,8 +815,28 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
       })
       .where(eq(recoveryAttempts.id, id));
 
+    await db.insert(recoveryAuditEvents).values({
+      id: `${id}_escalated_${timestamp.getTime()}`,
+      recoveryAttemptId: id,
+      type: "action",
+      title: "Recovery escalated",
+      description: decision.reason,
+      timestamp,
+      actor: "ReCart agent",
+      meta: `guardrail: ${decision.guardrail}`,
+    });
+
+    const updatedRows = await db
+      .select()
+      .from(recoveryAttempts)
+      .where(eq(recoveryAttempts.id, id))
+      .limit(1);
+
+    const updated = toRecoveryAttempt(updatedRows[0]);
+
     res.status(400).json({
       error: decision.reason,
+      attempt: updated,
     });
     return;
   }
