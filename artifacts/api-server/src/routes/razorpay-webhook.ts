@@ -5,6 +5,7 @@ import {
   recoveryAttempts,
   recoveryAuditEvents,
   recoveryConfig,
+  razorpayWebhookEvents,
 } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -58,6 +59,23 @@ function verifyWebhookSignature(
 
   return crypto.timingSafeEqual(received, expected);
 }
+async function markWebhookEventProcessed(eventId: string | undefined) {
+  if (!eventId) return;
+
+  await db
+    .update(razorpayWebhookEvents)
+    .set({ processed: true })
+    .where(eq(razorpayWebhookEvents.eventId, eventId));
+}
+
+async function releaseWebhookEvent(eventId: string | undefined) {
+  if (!eventId) return;
+
+  await db
+    .delete(razorpayWebhookEvents)
+    .where(eq(razorpayWebhookEvents.eventId, eventId));
+}
+
 
 router.post("/webhooks/razorpay", async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -142,6 +160,28 @@ router.post("/webhooks/razorpay", async (req, res) => {
     return res.status(400).json({
       error: "Payment entity is missing",
     });
+  }
+  if (eventId) {
+    const claimed = await db
+      .insert(razorpayWebhookEvents)
+      .values({
+        eventId,
+        event: event.event ?? "unknown",
+        receivedAt: new Date(),
+        processed: false,
+      })
+      .onConflictDoNothing({
+        target: razorpayWebhookEvents.eventId,
+      })
+      .returning();
+
+    if (claimed.length === 0) {
+      return res.status(200).json({
+        received: true,
+        processed: false,
+        duplicate: true,
+      });
+    }
   }
 
   try {
@@ -366,12 +406,15 @@ router.post("/webhooks/razorpay", async (req, res) => {
         );
       }
     }
+    await markWebhookEventProcessed(eventId);
 
     return res.status(200).json({
       received: true,
       processed: true,
     });
   } catch (error) {
+    await releaseWebhookEvent(eventId);
+
     console.error(
       "Razorpay webhook processing failed",
       error,
