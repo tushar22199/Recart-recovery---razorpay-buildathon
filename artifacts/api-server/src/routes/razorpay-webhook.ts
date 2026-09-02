@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import {
   recoveryAttempts,
   recoveryAuditEvents,
+  recoveryConfig,
 } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -164,6 +165,19 @@ router.post("/webhooks/razorpay", async (req, res) => {
         });
       }
 
+      const configRows = await db
+        .select()
+        .from(recoveryConfig)
+        .limit(1);
+
+      const recoveryPolicy = configRows[0] ?? {
+        maxAttempts: 3,
+        cooldownMinutes: 45,
+        windowHours: 24,
+        discountCap: 10,
+        enabled: true,
+      };
+
       const now = new Date();
       const id = `rp_${payment.id}`;
 
@@ -187,13 +201,14 @@ router.post("/webhooks/razorpay", async (req, res) => {
           channel: payment.method ?? "unknown",
           status: "pending",
           attempts: 1,
-          maxAttempts: 3,
+          maxAttempts: recoveryPolicy.maxAttempts,
           detectedAt: now,
           lastAction: "Payment failure detected",
           lastActionAt: now,
           paymentMethod: payment.method ?? "unknown",
           expiresAt: new Date(
-            now.getTime() + 24 * 60 * 60 * 1000,
+            now.getTime() +
+              recoveryPolicy.windowHours * 60 * 60 * 1000,
           ),
           razorpayPaymentId: payment.id,
           razorpayOrderId: payment.order_id ?? null,
@@ -214,22 +229,14 @@ router.post("/webhooks/razorpay", async (req, res) => {
           }.`,
         timestamp: now,
         actor: "Razorpay webhook",
-        meta: JSON.stringify({
-          event: event.event,
-          eventId,
-          paymentId: payment.id,
-          orderId: payment.order_id,
-        }),
+        meta: `payment.failed:${payment.id}`,
       });
 
-      console.log(
-        JSON.stringify({
-          message: "Recovery attempt created",
-          recoveryAttemptId: attempt.id,
-          paymentId: payment.id,
-          orderId: payment.order_id,
-        }),
-      );
+      return res.status(200).json({
+        received: true,
+        processed: true,
+        recoveryAttemptId: attempt.id,
+      });
     }
 
     /*
