@@ -49,6 +49,16 @@ export default function AttemptDetailPage() {
 
           <div className="decision-grid">
             <div>
+              <span>Diagnosis</span>
+              <strong>{attempt.decision.diagnosis}</strong>
+            </div>
+
+            <div>
+              <span>Risk</span>
+              <strong>{attempt.decision.riskLevel}</strong>
+            </div>
+
+            <div>
               <span>Channel</span>
               <strong>{attempt.decision.channel}</strong>
             </div>
@@ -65,10 +75,15 @@ export default function AttemptDetailPage() {
 
             <div>
               <span>Confidence</span>
-              <strong>{Math.round(attempt.decision.confidence * 100)}%</strong>
+              <strong>
+                {Math.round(attempt.decision.confidence * 100)}%
+              </strong>
             </div>
           </div>
-
+          <div className="decision-reason">
+            <span>Guardrail</span>
+            <p>{attempt.decision.guardrail}</p>
+          </div>
           <div className="decision-reason">
             <span>Reason</span>
             <p>{attempt.decision.reason}</p>

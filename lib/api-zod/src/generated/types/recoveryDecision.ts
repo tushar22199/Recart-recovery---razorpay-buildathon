@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { RecoveryDecisionChannel } from './recoveryDecisionChannel';
+import type { RecoveryDecisionRiskLevel } from './recoveryDecisionRiskLevel';
 
 export interface RecoveryDecision {
   channel: RecoveryDecisionChannel;
@@ -15,4 +16,7 @@ export interface RecoveryDecision {
   shouldEscalate: boolean;
   confidence: number;
   reason: string;
+  diagnosis: string;
+  riskLevel: RecoveryDecisionRiskLevel;
+  guardrail: string;
 }

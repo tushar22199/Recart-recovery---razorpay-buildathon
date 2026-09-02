@@ -27,6 +27,9 @@ type RecoveryDecision = {
   shouldRecover: boolean;
   shouldEscalate: boolean;
   confidence: number;
+  diagnosis: string;
+  riskLevel: "LOW" | "MEDIUM" | "HIGH";
+  guardrail: string;
   reason: string;
 };
 type RecoveryAttempt = {
@@ -269,8 +272,10 @@ function decideRecoveryAction(
   config: Config,
 ): RecoveryDecision {
   const reason = attempt.failureReason.toLowerCase();
+  const maxAttempts = Math.min(config.maxAttempts, attempt.maxAttempts);
+  const retriesRemaining = Math.max(0, maxAttempts - attempt.attempts);
 
-  // Hard guardrails
+  // Hard guardrails always take precedence over recovery optimization.
   if (!config.enabled) {
     return {
       channel: "Email",
@@ -279,11 +284,14 @@ function decideRecoveryAction(
       shouldRecover: false,
       shouldEscalate: true,
       confidence: 1,
+      diagnosis: "Recovery automation disabled",
+      riskLevel: "HIGH",
+      guardrail: "Merchant recovery policy is disabled",
       reason: "Recovery automation is disabled by merchant policy.",
     };
   }
 
-  if (attempt.attempts >= Math.min(config.maxAttempts, attempt.maxAttempts)) {
+  if (attempt.attempts >= maxAttempts) {
     return {
       channel: "Email",
       delayMinutes: 0,
@@ -291,6 +299,9 @@ function decideRecoveryAction(
       shouldRecover: false,
       shouldEscalate: true,
       confidence: 1,
+      diagnosis: "Retry limit reached",
+      riskLevel: "HIGH",
+      guardrail: `Maximum ${maxAttempts} recovery attempts reached`,
       reason: "Maximum recovery attempts reached.",
     };
   }
@@ -307,6 +318,9 @@ function decideRecoveryAction(
       shouldRecover: true,
       shouldEscalate: false,
       confidence: 0.91,
+      diagnosis: "Bank or funds-related decline",
+      riskLevel: "LOW",
+      guardrail: `${retriesRemaining} retries remaining; no discount applied`,
       reason: "Payment failure is recoverable with a fresh payment attempt.",
     };
   }
@@ -322,6 +336,9 @@ function decideRecoveryAction(
       shouldRecover: true,
       shouldEscalate: false,
       confidence: 0.88,
+      diagnosis: "Authentication failure",
+      riskLevel: "LOW",
+      guardrail: `${retriesRemaining} retries remaining; no discount applied`,
       reason: "Authentication failure suggests the customer may retry successfully.",
     };
   }
@@ -337,18 +354,26 @@ function decideRecoveryAction(
       shouldRecover: true,
       shouldEscalate: false,
       confidence: 0.86,
+      diagnosis: "Transient gateway or network failure",
+      riskLevel: "LOW",
+      guardrail: `${retriesRemaining} retries remaining; no discount applied`,
       reason: "Transient gateway/network failure is suitable for another payment attempt.",
     };
   }
 
   if (reason.includes("price hesitation")) {
+    const incentive = Math.min(config.discountCap, 5);
+
     return {
       channel: "WhatsApp",
       delayMinutes: config.cooldownMinutes,
-      incentivePercent: Math.min(config.discountCap, 5),
+      incentivePercent: incentive,
       shouldRecover: true,
       shouldEscalate: false,
       confidence: 0.79,
+      diagnosis: "Price hesitation",
+      riskLevel: "MEDIUM",
+      guardrail: `${retriesRemaining} retries remaining; incentive capped at ${config.discountCap}%`,
       reason: "Price hesitation may respond to a bounded incentive.",
     };
   }
@@ -360,10 +385,12 @@ function decideRecoveryAction(
     shouldRecover: true,
     shouldEscalate: false,
     confidence: 0.72,
+    diagnosis: "Unclassified payment failure",
+    riskLevel: "MEDIUM",
+    guardrail: `${retriesRemaining} retries remaining; no discount applied`,
     reason: "Failure does not match a high-risk recovery category.",
   };
 }
-
 async function seedDatabase(): Promise<void> {
   const existing = await db
     .select({ id: recoveryAttempts.id })

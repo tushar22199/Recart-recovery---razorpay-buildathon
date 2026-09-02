@@ -34,6 +34,15 @@ export const RecoveryDecisionChannel = {
   WhatsApp: 'WhatsApp',
 } as const;
 
+export type RecoveryDecisionRiskLevel = typeof RecoveryDecisionRiskLevel[keyof typeof RecoveryDecisionRiskLevel];
+
+
+export const RecoveryDecisionRiskLevel = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+} as const;
+
 export interface RecoveryDecision {
   channel: RecoveryDecisionChannel;
   delayMinutes: number;
@@ -42,6 +51,9 @@ export interface RecoveryDecision {
   shouldEscalate: boolean;
   confidence: number;
   reason: string;
+  diagnosis: string;
+  riskLevel: RecoveryDecisionRiskLevel;
+  guardrail: string;
 }
 
 export interface RecoveryAttempt {

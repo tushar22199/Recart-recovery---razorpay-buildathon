@@ -68,7 +68,10 @@ export const GetRecoveryAttemptsResponseItem = zod.object({
   "shouldRecover": zod.boolean(),
   "shouldEscalate": zod.boolean(),
   "confidence": zod.number(),
-  "reason": zod.string()
+  "reason": zod.string(),
+  "diagnosis": zod.string(),
+  "riskLevel": zod.enum(['LOW', 'MEDIUM', 'HIGH']),
+  "guardrail": zod.string()
 }).optional()
 })
 export const GetRecoveryAttemptsResponse = zod.array(GetRecoveryAttemptsResponseItem)
@@ -110,7 +113,10 @@ export const GetRecoveryAttemptResponse = zod.object({
   "shouldRecover": zod.boolean(),
   "shouldEscalate": zod.boolean(),
   "confidence": zod.number(),
-  "reason": zod.string()
+  "reason": zod.string(),
+  "diagnosis": zod.string(),
+  "riskLevel": zod.enum(['LOW', 'MEDIUM', 'HIGH']),
+  "guardrail": zod.string()
 }).optional()
 }).and(zod.object({
   "audit": zod.array(zod.object({
@@ -161,7 +167,10 @@ export const RetryRecoveryAttemptResponse = zod.object({
   "shouldRecover": zod.boolean(),
   "shouldEscalate": zod.boolean(),
   "confidence": zod.number(),
-  "reason": zod.string()
+  "reason": zod.string(),
+  "diagnosis": zod.string(),
+  "riskLevel": zod.enum(['LOW', 'MEDIUM', 'HIGH']),
+  "guardrail": zod.string()
 }).optional()
 })
 
@@ -244,7 +253,10 @@ export const SimulateRecoveryAttemptResponse = zod.object({
   "shouldRecover": zod.boolean(),
   "shouldEscalate": zod.boolean(),
   "confidence": zod.number(),
-  "reason": zod.string()
+  "reason": zod.string(),
+  "diagnosis": zod.string(),
+  "riskLevel": zod.enum(['LOW', 'MEDIUM', 'HIGH']),
+  "guardrail": zod.string()
 }).optional()
 }),
   "summary": zod.object({

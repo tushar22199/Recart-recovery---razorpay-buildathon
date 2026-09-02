@@ -15,6 +15,7 @@ export * from './recoveryConfig';
 export * from './recoveryConfigInput';
 export * from './recoveryDecision';
 export * from './recoveryDecisionChannel';
+export * from './recoveryDecisionRiskLevel';
 export * from './recoverySummary';
 export * from './simulationResult';
 export * from './trendPoint';

@@ -225,6 +225,9 @@ components:
         - shouldEscalate
         - confidence
         - reason
+        - diagnosis
+        - riskLevel
+        - guardrail
       properties:
         channel:
           type: string
@@ -242,6 +245,16 @@ components:
         confidence:
           type: number
         reason:
+          type: string
+        diagnosis:
+          type: string
+        riskLevel:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+        guardrail:
           type: string
 
     RecoveryAttempt:
