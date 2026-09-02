@@ -774,8 +774,40 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
     existing.attempts >=
     Math.min(config.maxAttempts, existing.maxAttempts)
   ) {
+    await db
+      .update(recoveryAttempts)
+      .set({
+        status: "escalated",
+        lastAction: "Flagged for human follow-up",
+        lastActionAt: timestamp,
+      })
+      .where(eq(recoveryAttempts.id, id));
+
+    await db.insert(recoveryAuditEvents).values({
+      id: `${id}_escalated_${timestamp.getTime()}`,
+      recoveryAttemptId: id,
+      type: "action",
+      title: "Recovery escalated",
+      description: "Maximum recovery attempts reached.",
+      timestamp,
+      actor: "ReCart agent",
+      meta: `guardrail: Maximum ${Math.min(
+        config.maxAttempts,
+        existing.maxAttempts,
+      )} recovery attempts reached`,
+    });
+
+    const updatedRows = await db
+      .select()
+      .from(recoveryAttempts)
+      .where(eq(recoveryAttempts.id, id))
+      .limit(1);
+
+    const updated = toRecoveryAttempt(updatedRows[0]);
+
     res.status(400).json({
       error: "Retry limit reached for this order",
+      attempt: updated,
     });
     return;
   }
