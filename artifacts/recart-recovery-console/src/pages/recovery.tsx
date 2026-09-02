@@ -207,7 +207,52 @@ export default function RecoveryPage() {
       <MetricCard label="Recovery rate" value={`${(summary?.recoveryRate || 0).toFixed(1)}%`} note="recovered from total exposed" accent="teal" icon={ShieldCheck} />
       <MetricCard label="Escalated" value={formatMoney(summary?.escalatedAmount || 0)} note={`${summary?.escalatedCount || 0} need human follow-up`} accent="navy" />
     </div></QueryState>
-    <div className="content-columns">
+      <section className="panel intelligence-panel animate-rise-in">
+        <div className="panel-head">
+          <div>
+            <div className="eyebrow">Recovery intelligence</div>
+            <h2>Where the money stands</h2>
+          </div>
+          <span className="live-badge">
+            <span className="live-dot" />
+            Live
+          </span>
+        </div>
+
+        <div className="intelligence-flow">
+          <div className="intelligence-total">
+            <span className="eyebrow">Total exposed</span>
+            <strong>{formatMoney(summary?.totalExposed || 0)}</strong>
+          </div>
+
+          <div className="intelligence-breakdown">
+            <div>
+              <span className="intelligence-dot recovered" />
+              <span>
+                <strong>{formatMoney(summary?.recovered || 0)}</strong>
+                <small>Recovered</small>
+              </span>
+            </div>
+
+            <div>
+              <span className="intelligence-dot pending" />
+              <span>
+                <strong>{formatMoney(summary?.pendingAmount || 0)}</strong>
+                <small>Still recoverable</small>
+              </span>
+            </div>
+
+            <div>
+              <span className="intelligence-dot escalated" />
+              <span>
+                <strong>{formatMoney(summary?.escalatedAmount || 0)}</strong>
+                <small>Escalated</small>
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <div className="content-columns">
       <section className="panel attempts-panel animate-rise-in animate-delay-1"><div className="panel-head"><div><div className="eyebrow">Needs a nudge</div><h2>Recovery attempts</h2></div><div className="panel-head-actions"><div className="search-box"><Search size={15} /><input data-testid="input-search-attempts" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search attempts" /></div><button data-testid="button-filter-attempts" className="icon-button bordered" title="Filter attempts"><Filter size={15} /></button></div></div><div className="table-meta"><span>{filteredAttempts.length} open attempts</span><span className="meta-rule" /><span className="meta-muted">Sorted by risk</span></div><QueryState loading={attemptsQuery.isLoading} error={attemptsQuery.isError} empty={!attemptsQuery.isLoading && !attemptsQuery.isError && attempts.length === 0} onRetry={() => void attemptsQuery.refetch()}><AttemptsTable
         attempts={attempts}
         onSelect={(id) => setLocation(`/attempts/${id}`)}
