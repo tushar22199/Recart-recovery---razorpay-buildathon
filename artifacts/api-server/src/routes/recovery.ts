@@ -311,6 +311,21 @@ async function seedDatabase(): Promise<void> {
 
   for (const attempt of attemptsToInsert) {
     const diagnosis = attempt.failureReason.toLowerCase();
+    const decision = decideRecoveryAction(
+      {
+        attempts: attempt.attempts,
+        maxAttempts: attempt.maxAttempts,
+        failureReason: attempt.failureReason,
+        failureCode: attempt.failureCode,
+      },
+      {
+        maxAttempts: 3,
+        cooldownMinutes: 45,
+        windowHours: 24,
+        discountCap: 10,
+        enabled: true,
+      },
+    );
 
     auditRows.push(
       {
@@ -333,7 +348,7 @@ async function seedDatabase(): Promise<void> {
           attempt.detectedAt.getTime() + 30_000,
         ),
         actor: "ReCart rules engine",
-        meta: "confidence: 0.91",
+        meta: `confidence: ${decision.confidence}`,
       },
       {
         id: `${attempt.id}_action`,
@@ -469,6 +484,22 @@ async function getSummary() {
 async function createAudit(attempt: RecoveryAttempt): Promise<void> {
   const diagnosis = attempt.failureReason.toLowerCase();
 
+  const decision = decideRecoveryAction(
+    {
+      attempts: attempt.attempts,
+      maxAttempts: attempt.maxAttempts,
+      failureReason: attempt.failureReason,
+      failureCode: attempt.failureCode,
+    },
+    {
+      maxAttempts: 3,
+      cooldownMinutes: 45,
+      windowHours: 24,
+      discountCap: 10,
+      enabled: true,
+    },
+  );
+
   const events: typeof recoveryAuditEvents.$inferInsert[] = [
     {
       id: `${attempt.id}_detected`,
@@ -490,7 +521,7 @@ async function createAudit(attempt: RecoveryAttempt): Promise<void> {
         new Date(attempt.detectedAt).getTime() + 30_000,
       ),
       actor: "ReCart rules engine",
-      meta: "confidence: 0.91",
+      meta: `confidence: ${decision.confidence}`,
     },
     {
       id: `${attempt.id}_action`,
