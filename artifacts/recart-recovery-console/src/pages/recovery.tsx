@@ -203,9 +203,9 @@ export default function RecoveryPage() {
     {error && <div className="mb-5"><QueryState error onRetry={refresh}>{null}</QueryState></div>}
     <QueryState loading={summaryQuery.isLoading} error={false}><div className="metrics-grid">
       <MetricCard label="Recovered" value={formatMoney(summary?.recovered || 0)} note="this recovery window" accent="saffron" icon={TrendingUp} />
-      <MetricCard label="At risk now" value={formatMoney(summary?.atRisk || 0)} note={`${summary?.pendingCount || 0} attempts in motion`} accent="coral" />
-      <MetricCard label="Recovery rate" value={`${(summary?.recoveryRate || 0).toFixed(1)}%`} note="vs 31.4% last period" accent="teal" icon={ShieldCheck} />
-      <MetricCard label="Total attempts" value={(summary?.totalAttempts || 0).toLocaleString("en-IN")} note={`${summary?.escalatedCount || 0} escalated`} accent="navy" />
+      <MetricCard label="Still recoverable" value={formatMoney(summary?.pendingAmount || 0)} note={`${summary?.pendingCount || 0} attempts in motion`} accent="coral" />
+      <MetricCard label="Recovery rate" value={`${(summary?.recoveryRate || 0).toFixed(1)}%`} note="recovered from total exposed" accent="teal" icon={ShieldCheck} />
+      <MetricCard label="Escalated" value={formatMoney(summary?.escalatedAmount || 0)} note={`${summary?.escalatedCount || 0} need human follow-up`} accent="navy" />
     </div></QueryState>
     <div className="content-columns">
       <section className="panel attempts-panel animate-rise-in animate-delay-1"><div className="panel-head"><div><div className="eyebrow">Needs a nudge</div><h2>Recovery attempts</h2></div><div className="panel-head-actions"><div className="search-box"><Search size={15} /><input data-testid="input-search-attempts" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search attempts" /></div><button data-testid="button-filter-attempts" className="icon-button bordered" title="Filter attempts"><Filter size={15} /></button></div></div><div className="table-meta"><span>{filteredAttempts.length} open attempts</span><span className="meta-rule" /><span className="meta-muted">Sorted by risk</span></div><QueryState loading={attemptsQuery.isLoading} error={attemptsQuery.isError} empty={!attemptsQuery.isLoading && !attemptsQuery.isError && attempts.length === 0} onRetry={() => void attemptsQuery.refetch()}><AttemptsTable

@@ -28,6 +28,9 @@ export const GetRecoverySummaryResponse = zod.object({
   "recoveredCount": zod.number(),
   "pendingCount": zod.number(),
   "escalatedCount": zod.number(),
+  "pendingAmount": zod.number(),
+  "escalatedAmount": zod.number(),
+  "totalExposed": zod.number(),
   "trend": zod.array(zod.object({
   "label": zod.string(),
   "recovered": zod.number(),
@@ -267,6 +270,9 @@ export const SimulateRecoveryAttemptResponse = zod.object({
   "recoveredCount": zod.number(),
   "pendingCount": zod.number(),
   "escalatedCount": zod.number(),
+  "pendingAmount": zod.number(),
+  "escalatedAmount": zod.number(),
+  "totalExposed": zod.number(),
   "trend": zod.array(zod.object({
   "label": zod.string(),
   "recovered": zod.number(),

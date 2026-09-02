@@ -390,7 +390,16 @@ async function getSummary() {
   const escalatedCount = attempts.filter(
     (attempt) => attempt.status === "escalated",
   ).length;
+  const pendingAmount = attempts
+    .filter((attempt) => attempt.status === "pending")
+    .reduce((total, attempt) => total + attempt.amount, 0);
 
+  const escalatedAmount = attempts
+    .filter((attempt) => attempt.status === "escalated")
+    .reduce((total, attempt) => total + attempt.amount, 0);
+
+  const totalExposed = attempts
+    .reduce((total, attempt) => total + attempt.amount, 0);
   /*
    * Build a real 7-day trend from recovery attempts.
    *
@@ -450,6 +459,9 @@ async function getSummary() {
     recoveredCount,
     pendingCount,
     escalatedCount,
+    pendingAmount,
+    escalatedAmount,
+    totalExposed,
     trend,
   };
 }

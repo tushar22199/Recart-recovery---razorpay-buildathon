@@ -180,6 +180,9 @@ components:
         - recoveredCount
         - pendingCount
         - escalatedCount
+        - pendingAmount
+        - escalatedAmount
+        - totalExposed
         - trend
       properties:
         recovered:
@@ -195,6 +198,12 @@ components:
         pendingCount:
           type: number
         escalatedCount:
+          type: number
+        pendingAmount:
+          type: number
+        escalatedAmount:
+          type: number
+        totalExposed:
           type: number
         trend:
           type: array

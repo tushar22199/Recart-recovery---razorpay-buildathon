@@ -23,6 +23,9 @@ export interface RecoverySummary {
   recoveredCount: number;
   pendingCount: number;
   escalatedCount: number;
+  pendingAmount: number;
+  escalatedAmount: number;
+  totalExposed: number;
   trend: TrendPoint[];
 }
 
