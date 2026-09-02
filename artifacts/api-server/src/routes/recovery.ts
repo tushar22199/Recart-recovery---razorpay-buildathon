@@ -907,7 +907,7 @@ router.post("/recovery/simulate", async (_req, res) => {
     attempts: 1,
     maxAttempts: config.maxAttempts,
     detectedAt: timestamp,
-    lastAction: "Fresh payment link sent",
+    lastAction: "Payment failure simulated",
     lastActionAt: timestamp,
     paymentMethod: blueprint.paymentMethod,
     recoveredAt: null,
@@ -920,7 +920,7 @@ router.post("/recovery/simulate", async (_req, res) => {
     .where(eq(recoveryAttempts.id, id))
     .limit(1);
 
-  const attempt = toRecoveryAttempt(attemptRows[0]);
+  const attempt = toRecoveryAttempt(attemptRows[0], config);
 
   await createAudit(attempt);
 
