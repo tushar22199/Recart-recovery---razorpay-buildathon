@@ -920,9 +920,39 @@ router.post("/recovery/simulate", async (_req, res) => {
     .where(eq(recoveryAttempts.id, id))
     .limit(1);
 
-  const attempt = toRecoveryAttempt(attemptRows[0], config);
+  let attempt = toRecoveryAttempt(attemptRows[0], config);
 
-  await createAudit(attempt);
+  if (attempt.decision?.shouldEscalate) {
+    await db
+      .update(recoveryAttempts)
+      .set({
+        status: "escalated",
+        lastAction: "Flagged for human follow-up",
+        lastActionAt: timestamp,
+      })
+      .where(eq(recoveryAttempts.id, id));
+
+    await db.insert(recoveryAuditEvents).values({
+      id: `${id}_escalated`,
+      recoveryAttemptId: id,
+      type: "action",
+      title: "Recovery escalated",
+      description: attempt.decision.reason,
+      timestamp,
+      actor: "ReCart agent",
+      meta: `guardrail: ${attempt.decision.guardrail}`,
+    });
+
+    const escalatedRows = await db
+      .select()
+      .from(recoveryAttempts)
+      .where(eq(recoveryAttempts.id, id))
+      .limit(1);
+
+    attempt = toRecoveryAttempt(escalatedRows[0], config);
+  } else {
+    await createAudit(attempt);
+  }
 
   const summary = await getSummary();
 
@@ -934,4 +964,4 @@ router.post("/recovery/simulate", async (_req, res) => {
   );
 });
 
-export default router;
+  export default router;
