@@ -736,6 +736,40 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
   const existing = toRecoveryAttempt(rows[0]);
   const config = await getConfig();
 
+  const timestamp = new Date();
+
+  // Recovery window has expired — do not execute another payment action.
+  if (
+    existing.expiresAt &&
+    timestamp >= new Date(existing.expiresAt)
+  ) {
+    await db
+      .update(recoveryAttempts)
+      .set({
+        status: "escalated",
+        lastAction: "Recovery window expired",
+        lastActionAt: timestamp,
+      })
+      .where(eq(recoveryAttempts.id, id));
+
+    await db.insert(recoveryAuditEvents).values({
+      id: `${id}_expired`,
+      recoveryAttemptId: id,
+      type: "action",
+      title: "Recovery escalated",
+      description:
+        "Recovery window expired before another payment attempt could be made.",
+      timestamp,
+      actor: "ReCart agent",
+      meta: "guardrail: Recovery window expired",
+    });
+
+    res.status(400).json({
+      error: "Recovery window expired. Flagged for human follow-up.",
+    });
+    return;
+  }
+
   if (
     existing.attempts >=
     Math.min(config.maxAttempts, existing.maxAttempts)
@@ -746,7 +780,7 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
     return;
   }
 
-  const timestamp = new Date();
+
 
   // Enforce the recovery cooldown before taking another external action.
   const cooldownMs = config.cooldownMinutes * 60 * 1000;
