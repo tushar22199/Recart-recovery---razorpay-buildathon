@@ -412,18 +412,28 @@ router.post("/webhooks/razorpay", async (req, res) => {
       received: true,
       processed: true,
     });
-  } catch (error) {
-    await releaseWebhookEvent(eventId);
+    } catch (error) {
+      await releaseWebhookEvent(eventId);
 
-    console.error(
-      "Razorpay webhook processing failed",
-      error,
-    );
+      console.error("Razorpay webhook processing failed", {
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorCode:
+          typeof error === "object" && error !== null && "code" in error
+            ? String((error as { code?: unknown }).code)
+            : undefined,
+        errorDetail:
+          typeof error === "object" && error !== null && "detail" in error
+            ? String((error as { detail?: unknown }).detail)
+            : undefined,
+        errorConstraint:
+          typeof error === "object" && error !== null && "constraint" in error
+            ? String((error as { constraint?: unknown }).constraint)
+            : undefined,
+      });
 
-    return res.status(500).json({
-      error: "Webhook processing failed",
+      return res.status(500).json({
+        error: "Webhook processing failed",
+      });
+      }
     });
-  }
-});
-
 export default router;
