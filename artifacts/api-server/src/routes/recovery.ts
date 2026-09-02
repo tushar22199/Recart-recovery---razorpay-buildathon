@@ -20,18 +20,12 @@ import {
   UpdateRecoveryConfigBody,
   UpdateRecoveryConfigResponse,
 } from "@workspace/api-zod";
-type RecoveryDecision = {
-  channel: "Email" | "WhatsApp";
-  delayMinutes: number;
-  incentivePercent: number;
-  shouldRecover: boolean;
-  shouldEscalate: boolean;
-  confidence: number;
-  diagnosis: string;
-  riskLevel: "LOW" | "MEDIUM" | "HIGH";
-  guardrail: string;
-  reason: string;
-};
+import {
+  decideRecoveryAction,
+  type RecoveryDecision,
+  type Config,
+} from "../services/recovery-decision";
+
 type RecoveryAttempt = {
   id: string;
   customer: string;
@@ -67,13 +61,6 @@ type AuditEvent = {
   meta: string | null;
 };
 
-type Config = {
-  maxAttempts: number;
-  cooldownMinutes: number;
-  windowHours: number;
-  discountCap: number;
-  enabled: boolean;
-};
 
 const router: IRouter = Router();
 function getRazorpayClient(): Razorpay {
@@ -191,27 +178,10 @@ function toRecoveryAttempt(
       ? {
           decision: decideRecoveryAction(
             {
-              id: row.id,
-              customer: row.customer,
-              email: row.email,
-              amount: Number(row.amount),
-              currency: row.currency,
-              failureReason: row.failureReason,
-              failureCode: row.failureCode,
-              channel: row.channel,
-              status: row.status,
               attempts: row.attempts,
               maxAttempts: row.maxAttempts,
-              detectedAt: row.detectedAt.toISOString(),
-              lastAction: row.lastAction,
-              lastActionAt: row.lastActionAt.toISOString(),
-              paymentMethod: row.paymentMethod ?? "",
-              recoveredAt: row.recoveredAt?.toISOString() ?? null,
-              expiresAt: row.expiresAt?.toISOString() ?? null,
-              razorpayOrderId: row.razorpayOrderId ?? null,
-              razorpayPaymentId: row.razorpayPaymentId ?? null,
-              razorpayPaymentLinkId: row.razorpayPaymentLinkId ?? null,
-              razorpayPaymentLinkUrl: row.razorpayPaymentLinkUrl ?? null,
+              failureReason: row.failureReason,
+              failureCode: row.failureCode,
             },
             config,
           ),
@@ -263,134 +233,9 @@ async function getConfig(): Promise<Config> {
     return inserted[0];
   }
 
-  return rows[0];
-}
-
-
-function decideRecoveryAction(
-  attempt: RecoveryAttempt,
-  config: Config,
-): RecoveryDecision {
-  const reason = attempt.failureReason.toLowerCase();
-  const maxAttempts = Math.min(config.maxAttempts, attempt.maxAttempts);
-  const retriesRemaining = Math.max(0, maxAttempts - attempt.attempts);
-
-  // Hard guardrails always take precedence over recovery optimization.
-  if (!config.enabled) {
-    return {
-      channel: "Email",
-      delayMinutes: 0,
-      incentivePercent: 0,
-      shouldRecover: false,
-      shouldEscalate: true,
-      confidence: 1,
-      diagnosis: "Recovery automation disabled",
-      riskLevel: "HIGH",
-      guardrail: "Merchant recovery policy is disabled",
-      reason: "Recovery automation is disabled by merchant policy.",
-    };
+    return rows[0];
   }
 
-  if (attempt.attempts >= maxAttempts) {
-    return {
-      channel: "Email",
-      delayMinutes: 0,
-      incentivePercent: 0,
-      shouldRecover: false,
-      shouldEscalate: true,
-      confidence: 1,
-      diagnosis: "Retry limit reached",
-      riskLevel: "HIGH",
-      guardrail: `Maximum ${maxAttempts} recovery attempts reached`,
-      reason: "Maximum recovery attempts reached.",
-    };
-  }
-
-  // Failure-specific strategy
-  if (
-    reason.includes("insufficient funds") ||
-    reason.includes("bank decline")
-  ) {
-    return {
-      channel: attempt.attempts >= 1 ? "WhatsApp" : "Email",
-      delayMinutes: config.cooldownMinutes,
-      incentivePercent: 0,
-      shouldRecover: true,
-      shouldEscalate: false,
-      confidence: 0.91,
-      diagnosis: "Bank or funds-related decline",
-      riskLevel: "LOW",
-      guardrail: `${retriesRemaining} retries remaining; no discount applied`,
-      reason: "Payment failure is recoverable with a fresh payment attempt.",
-    };
-  }
-
-  if (
-    reason.includes("otp") ||
-    reason.includes("authentication")
-  ) {
-    return {
-      channel: "WhatsApp",
-      delayMinutes: config.cooldownMinutes,
-      incentivePercent: 0,
-      shouldRecover: true,
-      shouldEscalate: false,
-      confidence: 0.88,
-      diagnosis: "Authentication failure",
-      riskLevel: "LOW",
-      guardrail: `${retriesRemaining} retries remaining; no discount applied`,
-      reason: "Authentication failure suggests the customer may retry successfully.",
-    };
-  }
-
-  if (
-    reason.includes("network") ||
-    reason.includes("gateway")
-  ) {
-    return {
-      channel: "Email",
-      delayMinutes: config.cooldownMinutes,
-      incentivePercent: 0,
-      shouldRecover: true,
-      shouldEscalate: false,
-      confidence: 0.86,
-      diagnosis: "Transient gateway or network failure",
-      riskLevel: "LOW",
-      guardrail: `${retriesRemaining} retries remaining; no discount applied`,
-      reason: "Transient gateway/network failure is suitable for another payment attempt.",
-    };
-  }
-
-  if (reason.includes("price hesitation")) {
-    const incentive = Math.min(config.discountCap, 5);
-
-    return {
-      channel: "WhatsApp",
-      delayMinutes: config.cooldownMinutes,
-      incentivePercent: incentive,
-      shouldRecover: true,
-      shouldEscalate: false,
-      confidence: 0.79,
-      diagnosis: "Price hesitation",
-      riskLevel: "MEDIUM",
-      guardrail: `${retriesRemaining} retries remaining; incentive capped at ${config.discountCap}%`,
-      reason: "Price hesitation may respond to a bounded incentive.",
-    };
-  }
-
-  return {
-    channel: "Email",
-    delayMinutes: config.cooldownMinutes,
-    incentivePercent: 0,
-    shouldRecover: true,
-    shouldEscalate: false,
-    confidence: 0.72,
-    diagnosis: "Unclassified payment failure",
-    riskLevel: "MEDIUM",
-    guardrail: `${retriesRemaining} retries remaining; no discount applied`,
-    reason: "Failure does not match a high-risk recovery category.",
-  };
-}
 async function seedDatabase(): Promise<void> {
   const existing = await db
     .select({ id: recoveryAttempts.id })
