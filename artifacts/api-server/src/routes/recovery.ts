@@ -1,3 +1,4 @@
+import { sendRecoveryNotification } from "../services/recovery-notifications";
 import { db } from "@workspace/db";
 import {
   recoveryAttempts,
@@ -30,6 +31,7 @@ type RecoveryAttempt = {
   id: string;
   customer: string;
   email: string;
+  phone?: string | null;
   amount: number;
   currency: string;
   failureReason: string;
@@ -156,6 +158,7 @@ function toRecoveryAttempt(
     id: row.id,
     customer: row.customer,
     email: row.email,
+    phone: row.phone ?? null,
     amount: Number(row.amount),
     currency: row.currency,
     failureReason: row.failureReason,
@@ -792,6 +795,17 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
 
   const nextChannel = decision.channel;
 
+  const notification = await sendRecoveryNotification({
+    customer: existing.customer,
+    email: existing.email,
+    phone: existing.phone ?? null,
+    amount: Number(existing.amount),
+    currency: existing.currency,
+    paymentLink: paymentLink.short_url,
+    channel: nextChannel,
+    failureReason: existing.failureReason,
+  });
+
   await db
     .update(recoveryAttempts)
     .set({
@@ -810,13 +824,20 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
     id: `${id}_retry_${nextAttempts}`,
     recoveryAttemptId: id,
     type: "action",
-    title: "Recovery payment link generated",
+    title: "Recovery notification sent",
     description:
       `Retry ${nextAttempts} of ${existing.maxAttempts} created via ${nextChannel}. ` +
-      `Razorpay Payment Link ${paymentLink.id} was generated.`,
+      `Razorpay Payment Link ${paymentLink.id} was generated. ` +
+      `${notification.message}`,
     timestamp,
     actor: "ReCart agent",
-    meta: `payment_link: ${paymentLink.id}`,
+    meta: JSON.stringify({
+      paymentLink: paymentLink.id,
+      channel: nextChannel,
+      notificationSent: notification.sent,
+      provider: notification.provider,
+      notificationMessage: notification.message,
+    }),
   });
 
   const updatedRows = await db

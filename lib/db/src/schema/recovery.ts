@@ -12,7 +12,7 @@ export const recoveryAttempts = pgTable("recovery_attempts", {
 
   customer: text("customer").notNull(),
   email: text("email").notNull(),
-
+  phone: text("phone"),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("INR"),
 

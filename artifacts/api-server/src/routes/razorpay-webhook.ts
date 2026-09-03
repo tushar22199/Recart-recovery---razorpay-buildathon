@@ -230,6 +230,7 @@ router.post("/webhooks/razorpay", async (req, res) => {
             payment.contact ??
             "Razorpay customer",
           email: payment.email ?? "",
+          phone: payment.contact ?? null,
           amount: String((payment.amount ?? 0) / 100),
           currency: payment.currency ?? "INR",
           failureReason:
