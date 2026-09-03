@@ -358,7 +358,7 @@ async function seedDatabase(): Promise<void> {
         description:
           attempt.status === "recovered"
             ? "The customer completed payment through the generated recovery link."
-            : `A bounded ${attempt.channel.toLowerCase()} nudge was sent with a fresh payment link.`,
+            : `Recovery link generated — ${attempt.channel} channel selected.`,
         timestamp: attempt.lastActionAt,
         actor: "ReCart agent",
         meta: `attempt ${attempt.attempts} of ${attempt.maxAttempts}`,
@@ -531,7 +531,7 @@ async function createAudit(attempt: RecoveryAttempt): Promise<void> {
       description:
         attempt.status === "recovered"
           ? "The customer completed payment through the generated recovery link."
-          : `A bounded ${attempt.channel.toLowerCase()} nudge was sent with a fresh payment link.`,
+          : `Recovery link generated — ${attempt.channel} channel selected.`,
       timestamp: new Date(attempt.lastActionAt),
       actor: "ReCart agent",
       meta: `attempt ${attempt.attempts} of ${attempt.maxAttempts}`,
