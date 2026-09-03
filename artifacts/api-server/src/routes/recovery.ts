@@ -824,11 +824,15 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
     id: `${id}_retry_${nextAttempts}`,
     recoveryAttemptId: id,
     type: "action",
-    title: "Recovery notification sent",
+    title: notification.sent
+    ? "Recovery notification sent"
+    : "Recovery notification blocked",
     description:
       `Retry ${nextAttempts} of ${existing.maxAttempts} created via ${nextChannel}. ` +
       `Razorpay Payment Link ${paymentLink.id} was generated. ` +
-      `${notification.message}`,
+      `${notification.sent
+        ? notification.message
+        : `Notification was not sent: ${notification.message}`}`,
     timestamp,
     actor: "ReCart agent",
     meta: JSON.stringify({
