@@ -960,7 +960,7 @@ router.post("/recovery/simulate", async (req, res) => {
     failureCode: blueprint.failureCode,
     channel: blueprint.channel,
     status: "pending",
-    attempts: 1,
+    attempts: 0,
     maxAttempts: config.maxAttempts,
     detectedAt: timestamp,
     lastAction: "Payment failure simulated",
