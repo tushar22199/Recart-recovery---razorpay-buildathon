@@ -118,11 +118,12 @@ const blueprints = [
   {
     customer: "Kabir Rao",
     email: "kabir.r@formandfunction.in",
+    phone: "+919306643863",
     amount: 21990,
     failureReason: "Insufficient funds",
     failureCode: "BAD_REQUEST_ERROR",
     paymentMethod: "Visa •••• 1108",
-    channel: "Email",
+    channel: "WhatsApp",
   },
   {
     customer: "Ananya Sen",
