@@ -90,6 +90,7 @@ const blueprints = [
   },
   {
     customer: "Priya Shah",
+    phone: "+919306643863",
     email: "priya.s@studio47.co",
     amount: 7490,
     failureReason: "OTP timeout",
@@ -108,6 +109,7 @@ const blueprints = [
   },
   {
     customer: "Nisha Kapoor",
+    phone: "+919306643863",
     email: "nisha.k@brightcart.com",
     amount: 5499,
     failureReason: "Network abort",
