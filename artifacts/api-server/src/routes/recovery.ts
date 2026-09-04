@@ -708,24 +708,28 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
 
 
 
-  // Enforce the recovery cooldown before taking another external action.
-  const cooldownMs = config.cooldownMinutes * 60 * 1000;
-  const nextRetryAt = new Date(
-    new Date(existing.lastActionAt).getTime() + cooldownMs,
-  );
-  if (timestamp < nextRetryAt) {
-    const remainingMs = nextRetryAt.getTime() - timestamp.getTime();
-    const remainingMinutes = Math.ceil(remainingMs / 60000);
+  // Enforce cooldown only after at least one recovery action has been executed.
+  // A newly detected/simulated payment failure has attempts=0, so its
+  // lastActionAt represents detection time rather than a recovery action.
+  if (existing.attempts > 0) {
+    const cooldownMs = config.cooldownMinutes * 60 * 1000;
+    const nextRetryAt = new Date(
+      new Date(existing.lastActionAt).getTime() + cooldownMs,
+    );
 
-    res.status(400).json({
-      error: `Recovery cooldown active. Retry available in ${remainingMinutes} minute${
-        remainingMinutes === 1 ? "" : "s"
-      }.`,
-      retryAt: nextRetryAt.toISOString(),
-    });
-    return;
+    if (timestamp < nextRetryAt) {
+      const remainingMs = nextRetryAt.getTime() - timestamp.getTime();
+      const remainingMinutes = Math.ceil(remainingMs / 60000);
+
+      res.status(400).json({
+        error: `Recovery cooldown active. Retry available in ${remainingMinutes} minute${
+          remainingMinutes === 1 ? "" : "s"
+        }.`,
+        retryAt: nextRetryAt.toISOString(),
+      });
+      return;
+    }
   }
-
   const nextAttempts = existing.attempts + 1;
 
   // Decide before executing any external payment action.
