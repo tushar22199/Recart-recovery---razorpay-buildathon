@@ -769,31 +769,49 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
   // Create Razorpay Payment Link only after the decision passes.
   const razorpay = getRazorpayClient();
 
-  const paymentLink = await razorpay.paymentLink.create({
-    amount: Math.round(existing.amount * 100),
-    currency: existing.currency,
-    accept_partial: false,
-    description: `Recovery payment for ${existing.customer}`,
-    reference_id: `recart_${id}_${nextAttempts}`.slice(0, 40),
-    customer: {
-      name: existing.customer,
-      email: existing.email || undefined,
-    },
-    notify: {
-      email: Boolean(existing.email),
-      sms: false,
-    },
-    expire_by: Math.floor(
-      hoursFromNow(config.windowHours).getTime() / 1000,
-    ),
-    reminder_enable: false,
-    notes: {
-      recoveryAttemptId: id,
-      recoveryAttempt: String(nextAttempts),
-      source: "ReCart AI Revenue Recovery",
-    },
-  });
+  let paymentLink;
 
+  try {
+    paymentLink = await razorpay.paymentLink.create({
+      amount: Math.round(existing.amount * 100),
+      currency: existing.currency,
+      accept_partial: false,
+      description: `Recovery payment for ${existing.customer}`,
+      reference_id: `recart_${id}_${nextAttempts}`.slice(0, 40),
+      customer: {
+        name: existing.customer,
+        email: existing.email || undefined,
+      },
+      notify: {
+        email: Boolean(existing.email),
+        sms: false,
+      },
+      expire_by: Math.floor(
+        hoursFromNow(config.windowHours).getTime() / 1000,
+      ),
+      reminder_enable: false,
+      notes: {
+        recoveryAttemptId: id,
+        recoveryAttempt: String(nextAttempts),
+        source: "ReCart AI Revenue Recovery",
+      },
+    });
+  } catch (error: any) {
+    console.error("Razorpay Payment Link creation failed:", {
+      statusCode: error?.statusCode,
+      error: error?.error,
+      description: error?.error?.description,
+      reason: error?.error?.reason,
+      field: error?.error?.field,
+      message: error?.message,
+    });
+
+    res.status(error?.statusCode || 500).json({
+      error: "Razorpay Payment Link creation failed",
+      details: error?.error?.description || error?.message || "Unknown Razorpay error",
+    });
+    return;
+  }
 
   const nextChannel = decision.channel;
 
