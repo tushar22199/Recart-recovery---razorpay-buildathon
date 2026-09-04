@@ -1,5 +1,4 @@
 import { Resend } from "resend";
-import twilio from "twilio";
 
 type NotificationInput = {
   customer: string;
@@ -14,21 +13,13 @@ type NotificationInput = {
 
 type NotificationResult = {
   sent: boolean;
-  provider: "resend" | "twilio" | "none";
+  provider: "resend" | "green-api" | "none";
   message: string;
 };
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
-
-const twilioClient =
-  process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
-    ? twilio(
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN,
-      )
-    : null;
 
 function formatAmount(amount: number, currency: string) {
   return `${currency} ${amount.toLocaleString("en-IN")}`;
@@ -39,6 +30,7 @@ export async function sendRecoveryNotification(
 ): Promise<NotificationResult> {
   const amount = formatAmount(input.amount, input.currency);
 
+  // Email recovery notification
   if (input.channel === "Email") {
     if (!resend || !process.env.RESEND_FROM_EMAIL) {
       return {
@@ -81,53 +73,88 @@ export async function sendRecoveryNotification(
     };
   }
 
-  if (!twilioClient) {
+  // WhatsApp recovery notification via GREEN-API
+  if (input.channel === "WhatsApp") {
+    if (!input.phone) {
+      return {
+        sent: false,
+        provider: "none",
+        message:
+          "WhatsApp notification blocked: customer phone number is missing.",
+      };
+    }
+
+    const instanceId = process.env.GREEN_API_INSTANCE_ID;
+    const apiToken = process.env.GREEN_API_TOKEN;
+
+    if (!instanceId || !apiToken) {
+      return {
+        sent: false,
+        provider: "none",
+        message: "GREEN-API WhatsApp credentials are not configured.",
+      };
+    }
+
+    const phone = input.phone
+      .replace(/^whatsapp:/, "")
+      .replace(/\D/g, "");
+
+    const response = await fetch(
+      `https://api.greenapi.com/waInstance${instanceId}/sendMessage/${apiToken}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          chatId: `${phone}@c.us`,
+          message: [
+            `Hi ${input.customer},`,
+            "",
+            `Your payment of ${amount} could not be completed.`,
+            "",
+            "You can securely retry your payment here:",
+            input.paymentLink,
+            "",
+            "— ReCart Recovery",
+          ].join("\n"),
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+
+      return {
+        sent: false,
+        provider: "none",
+        message: `GREEN-API WhatsApp request failed: ${errorText}`,
+      };
+    }
+
+    const result = (await response.json()) as {
+      idMessage?: string;
+    };
+
+    if (!result.idMessage) {
+      return {
+        sent: false,
+        provider: "none",
+        message:
+          "GREEN-API accepted the request but returned no message ID.",
+      };
+    }
+
     return {
-      sent: false,
-      provider: "none",
-      message: "WhatsApp provider is not configured.",
+      sent: true,
+      provider: "green-api",
+      message: `WhatsApp message sent via GREEN-API (${result.idMessage}).`,
     };
   }
-
-  if (!input.phone) {
-    return {
-      sent: false,
-      provider: "none",
-      message: "Customer phone number is missing.",
-    };
-  }
-
-  if (!process.env.TWILIO_WHATSAPP_FROM) {
-    return {
-      sent: false,
-      provider: "none",
-      message: "Twilio WhatsApp sender is not configured.",
-    };
-  }
-
-  const contentSid = process.env.TWILIO_WHATSAPP_CONTENT_SID;
-
-  if (!contentSid) {
-    return {
-      sent: false,
-      provider: "twilio",
-      message: "Twilio WhatsApp Content SID is not configured.",
-    };
-  }
-
-  await twilioClient.messages.create({
-    from: process.env.TWILIO_WHATSAPP_FROM,
-    to: `whatsapp:${input.phone.replace(/^whatsapp:/, "")}`,
-    contentSid,
-    contentVariables: JSON.stringify({
-      "1": input.customer,
-      "2": input.paymentLink,
-    }),
-  });
 
   return {
-    sent: true,
-    provider: "twilio",
-    message: "Recovery WhatsApp message sent.",
+    sent: false,
+    provider: "none",
+    message: `Unsupported recovery channel: ${input.channel}`,
   };
 }
