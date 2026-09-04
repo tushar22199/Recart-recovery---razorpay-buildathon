@@ -105,12 +105,24 @@ export async function sendRecoveryNotification(
     };
   }
 
+  const contentSid = process.env.TWILIO_WHATSAPP_CONTENT_SID;
+
+  if (!contentSid) {
+    return {
+      sent: false,
+      provider: "twilio",
+      message: "Twilio WhatsApp Content SID is not configured.",
+    };
+  }
+
   await twilioClient.messages.create({
     from: process.env.TWILIO_WHATSAPP_FROM,
     to: `whatsapp:${input.phone.replace(/^whatsapp:/, "")}`,
-    body:
-      `Hi ${input.customer}, your payment of ${amount} could not be completed. ` +
-      `You can retry securely here: ${input.paymentLink}`,
+    contentSid,
+    contentVariables: JSON.stringify({
+      "1": input.customer,
+      "2": input.paymentLink,
+    }),
   });
 
   return {
