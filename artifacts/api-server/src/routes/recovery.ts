@@ -777,7 +777,7 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
       currency: existing.currency,
       accept_partial: false,
       description: `Recovery payment for ${existing.customer}`,
-      reference_id: `recart_${id}_${nextAttempts}`.slice(0, 40),
+      reference_id: `recart_${Date.now()}_${nextAttempts}`,
       customer: {
         name: existing.customer,
         email: existing.email || undefined,
