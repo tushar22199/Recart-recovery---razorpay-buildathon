@@ -127,6 +127,7 @@ const blueprints = [
   {
     customer: "Ananya Sen",
     email: "ananya.s@fieldnotes.store",
+    phone: "+919306643863",
     amount: 8990,
     failureReason: "Price hesitation",
     failureCode: "ORDER_TIMEOUT",
@@ -287,6 +288,7 @@ async function seedDatabase(): Promise<void> {
       id: `rc_${String(1000 + index)}`,
       customer: blueprint.customer,
       email: blueprint.email,
+      phone: blueprint.phone ?? null,
       amount: String(blueprint.amount + (index % 4) * 250),
       currency: "INR",
       failureReason: blueprint.failureReason,
@@ -902,12 +904,28 @@ router.patch("/recovery/config", async (req, res) => {
   res.json(UpdateRecoveryConfigResponse.parse(newConfig));
 });
 
-router.post("/recovery/simulate", async (_req, res) => {
+router.post("/recovery/simulate", async (req, res) => {
   const config = await getConfig();
   const attempts = await getAttempts();
 
-  const index = attempts.length;
-  const blueprint = blueprints[index % blueprints.length];
+  const requestedCustomer =
+    typeof req.query.customer === "string"
+      ? req.query.customer.trim()
+      : null;
+
+  const blueprint = requestedCustomer
+    ? blueprints.find(
+        (item) =>
+          item.customer.toLowerCase() === requestedCustomer.toLowerCase(),
+      )
+    : blueprints[attempts.length % blueprints.length];
+
+  if (!blueprint) {
+    res.status(404).json({
+      error: `No simulation blueprint found for customer "${requestedCustomer}".`,
+    });
+    return;
+  }
   const timestamp = new Date();
 
   const id = `rc_${Date.now()}`;
@@ -916,6 +934,7 @@ router.post("/recovery/simulate", async (_req, res) => {
     id,
     customer: blueprint.customer,
     email: blueprint.email,
+    phone: blueprint.phone ?? null,
     amount: String(blueprint.amount + 375),
     currency: "INR",
     failureReason: blueprint.failureReason,
