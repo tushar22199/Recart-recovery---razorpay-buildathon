@@ -1,1201 +1,816 @@
-# ReCart — AI Revenue Recovery Console
+# ♻️ ReCart — AI Revenue Recovery Agent
 
-> **Recover revenue aggressively enough to matter, but conservatively enough to trust.**
+> **Recover revenue that would otherwise be lost.**
+>
+> ReCart is an AI-powered revenue recovery agent for merchants that detects failed payments, explains why they failed, decides the most appropriate recovery action, executes bounded recovery workflows, and verifies whether the revenue was actually recovered.
 
-ReCart is an **AI-powered revenue recovery console** built for the **Razorpay AI Revenue Recovery Buildathon 2026**.
-
-It detects failed payments, evaluates the recovery opportunity, produces an explainable recovery decision, validates that decision against server-side guardrails, executes an allowed recovery action through customer communication channels, creates a Razorpay Payment Link, and verifies the final payment outcome through Razorpay webhooks.
-
-Instead of treating every failed payment as:
-
-> **Payment failed → Retry**
-
-ReCart asks:
-
-> **Who should we recover? → Why should we recover them? → What should we do next?**
-
-And then closes the loop:
-
-```text
-DETECT
-  ↓
-DIAGNOSE
-  ↓
-DECIDE
-  ↓
-EXPLAIN
-  ↓
-VALIDATE
-  ↓
-EXECUTE
-  ↓
-OBSERVE
-  ↓
-RECOVER / ESCALATE
-```
+[![Razorpay](https://img.shields.io/badge/Razorpay-Test%20Mode-blue)](https://razorpay.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-Express-green)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-Vite-61DAFB)](https://react.dev/)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791)](https://www.postgresql.org/)
 
 ---
 
-# 🚀 The Problem
+## 🎯 Problem
 
-Revenue loss rarely happens in one clean step.
+Payment failure does not always mean lost revenue.
 
-A payment can fail because of:
+A customer may have:
 
-* authentication issues
-* insufficient funds
-* UPI/payment-method failures
-* gateway or network failures
-* temporary payment issues
-* checkout abandonment
-* price hesitation
-* repeated unsuccessful attempts
+* insufficient funds temporarily
+* a failed bank authorization
+* a card/network issue
+* an expired payment method
+* abandoned checkout
+* a recoverable payment that simply needs another attempt
 
-Traditional recovery systems often use a generic approach:
+Traditional payment systems stop at:
 
 ```text
-Payment failed
-      ↓
-Send payment link
-      ↓
-Retry
+Payment Failed → Merchant Notified
 ```
 
-That ignores the context behind the failure.
+The merchant is then expected to manually decide:
 
-It can also lead to:
+* Should I retry?
+* When should I retry?
+* Should I contact the customer?
+* Which channel should I use?
+* Should I offer an incentive?
+* When should I stop trying?
 
-* unnecessary customer outreach
-* repeated retries
-* poor customer experience
-* wasted recovery effort
-* unclear decision-making
-* no reliable distinction between attempted and actually recovered revenue
-
-ReCart treats revenue recovery as a **decision-making and execution problem**, not simply a retry problem.
+This creates a gap between **payment failure** and **revenue recovery**.
 
 ---
 
-# 💡 The Solution
+# 💡 ReCart Solution
 
-ReCart combines:
-
-1. **Revenue-at-risk detection**
-2. **Payment failure diagnosis**
-3. **Recovery decisioning**
-4. **Explainable reasoning**
-5. **Server-side guardrails**
-6. **Multi-channel recovery**
-7. **Razorpay Payment Links**
-8. **Webhook-based payment verification**
-9. **Recovery state management**
-10. **Auditability and operational analytics**
-
-The complete recovery loop is:
+ReCart turns payment failure into an autonomous, bounded recovery workflow.
 
 ```text
 Payment Failure
       ↓
-Revenue Risk Detection
+Detect Recovery Opportunity
       ↓
-Failure Diagnosis
+Diagnose Failure
       ↓
-Recovery Decision
+Evaluate Recovery Potential
       ↓
-Explainable Reason
+Generate Recovery Decision
       ↓
-Guardrail Validation
+Apply Merchant Guardrails
       ↓
-Recovery Action
-      ↓
-Customer Notification
-      ↓
-Razorpay Payment Link
+Execute Recovery Action
       ↓
 Customer Checkout
       ↓
 Razorpay Webhook
       ↓
-Payment Verification
+Verify Payment
       ↓
-RECOVERED / FAILED / ESCALATED
-      ↓
-Dashboard + Audit Trail
+Recovered Revenue
 ```
 
----
+The key principle is:
 
-# 🧠 What Makes ReCart Different?
-
-ReCart is not simply a payment-link automation tool.
-
-It introduces an **explainable recovery decision layer** between payment failure and recovery execution.
-
-For each recovery opportunity, ReCart can determine:
-
-### Who should be recovered?
-
-Based on the available payment and recovery context.
-
-### Why should they be recovered?
-
-Based on the diagnosed failure and recovery opportunity.
-
-### What should happen next?
-
-The system selects an appropriate intervention and recovery channel.
-
-### Is the action actually allowed?
-
-Server-side guardrails validate the action before execution.
-
-### Did the recovery work?
-
-Razorpay webhook events provide the final payment outcome.
-
-This creates a closed-loop recovery system rather than a one-way automation.
+> **AI recommends. Policies control. The system executes. Webhooks verify.**
 
 ---
 
-# 🎯 Core Features
+# 🧠 What Makes ReCart Agentic?
 
-## 1. Revenue-at-Risk Detection
+ReCart is not simply a dashboard showing failed payments.
 
-ReCart turns failed payments into structured recovery opportunities.
+The system performs a bounded decision-and-action loop:
 
-Each opportunity can track:
+### 1. Detect
 
-* customer
-* transaction
-* amount
-* failure reason
-* failure code
-* payment method
-* recovery status
-* retry count
-* recovery channel
-* decision
-* intervention
-* final outcome
+Identify a failed payment that may be recoverable.
 
-This gives merchants a prioritized view of revenue that may still be recoverable.
+### 2. Diagnose
 
----
+Understand the failure context and classify the recovery situation.
 
-# 2. Explainable Recovery Decision
+### 3. Decide
 
-The recovery engine produces a structured decision rather than an opaque score.
+Generate an explainable recommendation covering:
 
-A decision can contain:
-
-* diagnosis
-* recommended channel
-* retry delay
+* recovery eligibility
+* recommended action
+* channel
+* retry timing
 * incentive
-* recovery recommendation
-* escalation recommendation
 * confidence
-* risk level
-* reasoning
-* guardrail state
-
-Example:
-
-```text
-Diagnosis:
-Price hesitation
-
-Decision:
-Recover through WhatsApp
-
-Confidence:
-79%
-
-Intervention:
-5% bounded incentive
-
-Reason:
-Price hesitation may respond to a bounded incentive.
-
-Risk:
-MEDIUM
-```
-
-The operator can see **why** the system reached the decision.
-
----
-
-# 3. Bounded Agentic Workflow
-
-The most important architectural principle in ReCart is:
-
-> **Decision authority is not execution authority.**
-
-The recovery engine can recommend an action.
-
-The backend decides whether that action is permitted.
-
-```text
-DETECT
-  ↓
-EVALUATE
-  ↓
-RECOMMEND
-  ↓
-VALIDATE AGAINST POLICY
-  ↓
-EXECUTE ALLOWED ACTION
-  ↓
-OBSERVE RESULT
-```
-
-This prevents an AI decision from directly becoming unlimited financial automation.
-
----
-
-# 4. Server-Side Guardrails
-
-Recovery actions are bounded by explicit backend policies.
-
-Current live policy:
-
-| Guardrail         |         Value |
-| ----------------- | ------------: |
-| Maximum attempts  |         **3** |
-| Retry cooldown    | **5 minutes** |
-| Recovery window   |  **24 hours** |
-| Maximum incentive |       **10%** |
-| Automation        |   **Enabled** |
-
-These constraints are enforced by the backend.
-
-They are not merely UI recommendations.
-
-### Example
-
-Once an attempt reaches:
-
-```text
-Attempt 3 / 3
-```
-
-a further retry is rejected.
-
-The system then escalates the case:
-
-```text
-ESCALATED
-↓
-Flagged for human follow-up
-```
-
-This demonstrates **bounded autonomy** in an actual recovery workflow.
-
----
-
-# 5. Multi-Channel Recovery
-
-ReCart supports multiple customer recovery channels.
-
-### Email
-
-Recovery notifications are sent using **Resend**.
-
-### WhatsApp
-
-Recovery notifications are sent using **GREEN-API**.
-
-The notification layer is separated from the decision layer so recovery decisions are not tightly coupled to a particular communication provider.
-
-The system can therefore determine:
-
-```text
-Decision
-   ↓
-Channel
-   ↓
-Notification Provider
-   ↓
-Recovery Link
-```
-
----
-
-# 6. Razorpay Payment Links
-
-When a recovery action is permitted, ReCart creates a **Razorpay Payment Link**.
-
-The customer can then complete the payment through Razorpay Checkout.
-
-Importantly:
-
-> **Creating a Payment Link does not mean the revenue was recovered.**
-
-ReCart only records recovered revenue after the payment outcome is confirmed.
-
----
-
-# 7. Webhook-Driven Recovery Verification
-
-The recovery workflow continues after the notification is sent.
-
-```text
-Payment Link Created
-        ↓
-Customer Checkout
-        ↓
-Payment Completed
-        ↓
-Razorpay Event
-        ↓
-Webhook Received
-        ↓
-Webhook Processed
-        ↓
-Recovery Attempt Updated
-        ↓
-Revenue Marked Recovered
-```
-
-The tested recovery flow includes Razorpay payment events such as:
-
-```text
-payment_link.paid
-payment.captured
-```
-
-This ensures that the dashboard reflects **actual payment outcomes**, rather than assuming that an attempted recovery succeeded.
-
----
-
-# 8. Recovery State Management
-
-Each recovery opportunity moves through explicit states.
-
-Examples include:
-
-```text
-RECOVERABLE
-     ↓
-ATTEMPTED
-     ↓
-PAYMENT LINK CREATED
-     ↓
-NOTIFICATION SENT
-     ↓
-RECOVERED
-```
-
-Or, when automation reaches its limit:
-
-```text
-RECOVERABLE
-     ↓
-ATTEMPTED
-     ↓
-ATTEMPTED
-     ↓
-ATTEMPTED
-     ↓
-ESCALATED
-```
-
-This makes the lifecycle visible to both the merchant and the system.
-
----
-
-# 9. Audit Trail
-
-Every important recovery event is recorded.
-
-Examples include:
-
-* payment failure detected
-* failure diagnosed
-* recovery decision generated
-* recovery action requested
-* recovery action allowed
-* recovery notification sent
-* recovery notification blocked
-* payment link generated
-* payment recovered
-* retry limit reached
-* recovery escalated
-* human follow-up required
-
-The resulting chain is:
-
-```text
-Payment
-   ↓
-Diagnosis
-   ↓
-Decision
-   ↓
-Reason
-   ↓
-Policy Validation
-   ↓
-Action
-   ↓
-Payment Event
-   ↓
-Outcome
-```
-
-This makes the system **observable, explainable, and auditable**.
-
----
-
-# 🔄 End-to-End Recovery Example
-
-## Example A — Successful WhatsApp Recovery
-
-A failed payment is identified as a recovery opportunity.
-
-```text
-Customer:
-Ananya Sen
-
-Amount:
-₹9,365
-
-Diagnosis:
-Price hesitation
-
-Decision:
-WhatsApp
-
-Confidence:
-79%
-
-Retry:
-2 / 3
-```
-
-ReCart:
-
-1. Evaluates the failed payment
-2. Produces an explainable recovery decision
-3. Validates the action against guardrails
-4. Generates a Razorpay Payment Link
-5. Sends the recovery notification through GREEN-API
-6. Customer completes checkout
-7. Razorpay sends the payment event
-8. ReCart processes the webhook
-9. The recovery attempt becomes `RECOVERED`
-10. ₹9,365 is added to recovered revenue
-
-The important distinction is:
-
-```text
-Action executed ≠ Revenue recovered
-```
-
-Revenue is only counted after confirmation.
-
----
-
-# Example B — Successful Email Recovery
-
-Another failed payment is routed through Email.
-
-```text
-Customer:
-Rohan Iyer
-
-Amount:
-₹18,775
-
-Failure:
-UPI collect not accepted
-
-Decision:
-Email
-
-Provider:
-Resend
-```
-
-The customer completes the Razorpay checkout.
-
-The corresponding payment event is processed.
-
-The recovery attempt becomes:
-
-```text
-RECOVERED
-```
-
-and the confirmed amount contributes to recovered revenue.
-
----
-
-# Example C — Guardrail Enforcement
-
-A recovery opportunity reaches the maximum permitted attempts.
-
-```text
-Customer:
-Kabir Rao
-
-Amount:
-₹22,365
-
-Attempts:
-3 / 3
-
-Status:
-ESCALATED
-```
-
-A fourth retry is requested.
-
-The backend rejects it:
-
-```text
-Retry limit reached for this order
-```
-
-The recovery workflow then moves to:
-
-```text
-ESCALATED
-```
-
-with:
-
-```text
-Flagged for human follow-up
-```
-
-No fourth automated recovery action is created.
-
-This demonstrates that the system can **stop itself** when the recovery policy says it should.
-
----
-
-# 📊 Recovery Console
-
-ReCart provides a merchant-facing control room for monitoring recovery performance.
-
-The dashboard surfaces:
-
-* total exposed revenue
-* recovered revenue
-* still-recoverable revenue
-* escalated revenue
-* recovery rate
-* active recovery attempts
-* customer/payment context
-* failure diagnosis
-* selected channel
-* retry progress
 * risk
-* latest activity
-* recovery outcomes
+* rationale
 
-Example workspace:
+### 4. Constrain
+
+Before execution, the recommendation is checked against merchant-configured policies.
+
+### 5. Execute
+
+The permitted recovery action is executed through the appropriate integration.
+
+### 6. Verify
+
+Recovery is not considered successful merely because an action was sent.
+
+The system waits for an authoritative Razorpay payment event.
+
+### 7. Learn from the Outcome
+
+The attempt is updated as:
 
 ```text
-Total exposed       ₹1,87,867
-Recovered             ₹59,744
-Still recoverable     ₹39,969
-Escalated             ₹88,154
+RECOVERED
+FAILED
+ESCALATED
 ```
 
-The dashboard intentionally separates:
-
-**Confirmed recovered revenue**
-
-from:
-
-**Revenue still recoverable**
-
-and:
-
-**Revenue requiring human intervention**
-
-This prevents recovery actions from being confused with actual business outcomes.
+and the result becomes part of the merchant's recovery history.
 
 ---
 
 # 🏗️ Architecture
 
 ```text
-                         ┌─────────────────────┐
-                         │   Recovery Console  │
-                         │      Frontend       │
-                         └──────────┬──────────┘
+                         ┌──────────────────────────┐
+                         │        MERCHANT          │
+                         │     Recovery Console     │
+                         │       React + Vite       │
+                         └────────────┬─────────────┘
+                                      │
+                                      │ REST API
+                                      ▼
+                    ┌─────────────────────────────────┐
+                    │          ReCart Backend         │
+                    │       Node.js + Express         │
+                    │                                 │
+                    │  ┌───────────────────────────┐  │
+                    │  │     Recovery Engine        │  │
+                    │  │                            │  │
+                    │  │ Failure diagnosis          │  │
+                    │  │ Recovery opportunity       │  │
+                    │  │ Evaluation                 │  │
+                    │  └─────────────┬─────────────┘  │
+                    │                │                │
+                    │  ┌─────────────▼─────────────┐  │
+                    │  │      Decision Layer        │  │
+                    │  │                            │  │
+                    │  │ Channel                    │  │
+                    │  │ Timing                     │  │
+                    │  │ Incentive                  │  │
+                    │  │ Confidence                 │  │
+                    │  │ Risk                       │  │
+                    │  │ Explanation                │  │
+                    │  └─────────────┬─────────────┘  │
+                    │                │                │
+                    │  ┌─────────────▼─────────────┐  │
+                    │  │    Policy / Guardrails     │  │
+                    │  │                            │  │
+                    │  │ Attempt limits             │  │
+                    │  │ Cooldown                   │  │
+                    │  │ Recovery window            │  │
+                    │  │ Incentive cap              │  │
+                    │  │ Escalation rules           │  │
+                    │  └─────────────┬─────────────┘  │
+                    │                │                │
+                    │  ┌─────────────▼─────────────┐  │
+                    │  │       Audit Trail          │  │
+                    │  │                            │  │
+                    │  │ Decisions                  │  │
+                    │  │ Actions                    │  │
+                    │  │ Outcomes                   │  │
+                    │  │ Webhook events             │  │
+                    │  └────────────────────────────┘  │
+                    └───────────────┬─────────────────┘
                                     │
-                                    ▼
-                         ┌─────────────────────┐
-                         │    Recovery API     │
-                         │      Backend        │
-                         └──────────┬──────────┘
-                                    │
-              ┌─────────────────────┼─────────────────────┐
-              │                     │                     │
-              ▼                     ▼                     ▼
-       ┌─────────────┐       ┌─────────────┐       ┌──────────────┐
-       │  Decision   │       │  Guardrails │       │ Audit Trail  │
-       │   Engine    │       │             │       │              │
-       └──────┬──────┘       └─────────────┘       └──────────────┘
-              │
-              ▼
-       ┌─────────────────┐
-       │ Notification    │
-       │     Layer       │
-       └────────┬────────┘
-                │
-         ┌──────┴───────────┐
-         │                  │
-         ▼                  ▼
-     ┌────────┐        ┌───────────┐
-     │ Resend │        │ GREEN-API │
-     │ Email  │        │ WhatsApp  │
-     └────────┘        └───────────┘
-         │                  │
-         └────────┬─────────┘
-                  │
-                  ▼
-          ┌─────────────────┐
-          │ Razorpay        │
-          │ Payment Link    │
-          └────────┬────────┘
-                   │
-                   ▼
-          Customer Checkout
-                   │
-                   ▼
-          ┌─────────────────┐
-          │ Razorpay        │
-          │ Payment Events  │
-          └────────┬────────┘
-                   │
-                   ▼
-          ┌─────────────────┐
-          │ ReCart Webhook  │
-          │ Processor       │
-          └────────┬────────┘
-                   │
-                   ▼
-          Recovery Outcome
-                   │
-                   ▼
-          Dashboard + Audit
+                  ┌─────────────────┼─────────────────┐
+                  │                 │                 │
+                  ▼                 ▼                 ▼
+        ┌────────────────┐ ┌────────────────┐ ┌──────────────────┐
+        │   PostgreSQL   │ │ Notifications  │ │     Razorpay     │
+        │                │ │                │ │                  │
+        │ Recovery       │ │    Resend      │ │ Payment Links    │
+        │ Attempts       │ │    GREEN-API   │ │ Checkout         │
+        │ Configuration  │ │                │ │ Payment Events   │
+        │ Audit Events   │ │ Email /        │ │ Webhooks         │
+        │                │ │ WhatsApp       │ │                  │
+        └────────────────┘ └────────────────┘ └────────┬─────────┘
+                                                       │
+                                                       ▼
+                                            ┌────────────────────┐
+                                            │ Customer Checkout  │
+                                            │                    │
+                                            │ Razorpay Payment   │
+                                            └─────────┬──────────┘
+                                                      │
+                                                      │ Payment Event
+                                                      ▼
+                                            ┌────────────────────┐
+                                            │ Webhook Processor  │
+                                            │                    │
+                                            │ Verify → Reconcile │
+                                            │ → Update Attempt   │
+                                            └─────────┬──────────┘
+                                                      │
+                                                      ▼
+                                            ┌────────────────────┐
+                                            │ Recovery Outcome   │
+                                            │                    │
+                                            │ RECOVERED          │
+                                            │ FAILED             │
+                                            │ ESCALATED          │
+                                            └─────────┬──────────┘
+                                                      │
+                                                      ▼
+                                            ┌────────────────────┐
+                                            │ Dashboard + Audit  │
+                                            └────────────────────┘
 ```
 
 ---
 
-# 🧩 System Components
+# 🔄 End-to-End Recovery Flow
 
-## Recovery Engine
+## Step 1 — Payment Failure
 
-Evaluates failed payment opportunities and determines whether recovery is appropriate.
+A payment fails in Razorpay Test Mode.
 
-## Decision Layer
+```text
+Customer
+   ↓
+Razorpay
+   ↓
+Payment Failure
+   ↓
+ReCart
+```
 
-Produces the structured recovery recommendation, diagnosis, confidence, risk, intervention and reasoning.
+The failed payment becomes a potential recovery opportunity.
 
-## Policy / Guardrail Layer
+---
 
-Validates whether the recommended recovery action is permitted.
+## Step 2 — Recovery Analysis
 
-Examples:
+ReCart evaluates the payment context.
 
-* maximum retry attempts
-* cooldown period
+The decision layer produces a structured recommendation such as:
+
+```text
+Recovery: Recommended
+
+Reason:
+Payment appears recoverable based on the failure context.
+
+Recommended Action:
+Create a recovery payment link.
+
+Channel:
+WhatsApp / Email
+
+Timing:
+Immediate or delayed retry
+
+Incentive:
+None / bounded incentive
+
+Confidence:
+High
+
+Risk:
+Low
+
+Explanation:
+The payment failure is considered recoverable and
+the selected intervention remains within merchant policy.
+```
+
+---
+
+# 🛡️ Bounded Autonomy
+
+ReCart is designed so that AI does **not** have unrestricted authority.
+
+The system separates:
+
+```text
+AI Decision
+     ↓
+Policy Validation
+     ↓
+Execution
+```
+
+Merchant controls can include:
+
+* maximum recovery attempts
+* retry cooldown
 * recovery window
-* incentive limits
-* escalation conditions
+* maximum incentive
+* automation enable/disable
+* escalation rules
 
-## Notification Layer
+For example:
 
-Routes recovery communication through supported providers.
+```text
+AI recommends:
+"Offer 10% incentive"
 
-Currently:
+Merchant policy:
+Maximum incentive = 5%
 
-* Resend
-* GREEN-API
+Result:
+❌ Recommendation rejected
+```
 
-## Razorpay Integration
+This prevents an AI recommendation from directly overriding merchant-defined business rules.
 
-Handles:
+---
 
-* Payment Link creation
-* payment checkout
-* payment status
-* payment events
+# 💳 Razorpay Integration
 
-## Webhook Processor
+ReCart integrates with Razorpay to execute and verify the recovery workflow.
 
-Receives and processes Razorpay payment events and updates the corresponding recovery state.
+### Recovery execution
 
-## Recovery Dashboard
+A failed payment can result in a Razorpay Payment Link being created.
 
-Provides merchant visibility into:
+```text
+ReCart
+  ↓
+Razorpay Payment Link API
+  ↓
+Payment Link
+  ↓
+Customer
+  ↓
+Razorpay Checkout
+```
 
-* revenue exposure
-* recovery decisions
+### Recovery verification
+
+Once the customer pays, Razorpay sends the relevant payment event to ReCart.
+
+```text
+Razorpay
+    ↓
+payment_link.paid
+payment.captured
+    ↓
+ReCart Webhook
+    ↓
+Verify Event
+    ↓
+Find Recovery Attempt
+    ↓
+Mark Recovered
+    ↓
+Update Revenue Metrics
+```
+
+A recovery is therefore based on **payment confirmation**, not merely on the fact that a notification or payment link was sent.
+
+---
+
+# 📩 Recovery Channels
+
+ReCart supports multiple recovery communication channels.
+
+### Email
+
+Powered through **Resend**.
+
+Used for:
+
+* recovery notifications
+* payment links
+* customer follow-ups
+
+### WhatsApp
+
+Powered through **GREEN-API**.
+
+Used for:
+
+* recovery messages
+* payment links
+* customer reminders
+
+The decision layer can select the appropriate channel based on the recovery context and merchant configuration.
+
+---
+
+# 📊 Recovery Console
+
+The merchant dashboard provides a real-time operational view of revenue recovery.
+
+### Key metrics
+
+```text
+Revenue At Risk
+       ↓
+Recoverable Revenue
+       ↓
+Recovered Revenue
+       ↓
+Recovery Rate
+```
+
+The console also provides visibility into:
+
+* failed payments
 * recovery attempts
-* confirmed recoveries
-* escalations
-* recent activity
-* operational state
+* active recoveries
+* recovered payments
+* escalated cases
+* recovery decisions
+* decision explanations
+* audit history
 
 ---
 
-# 🔐 Safety & Reliability
+# 🔍 Explainability
 
-Financial automation requires more than a good AI recommendation.
+Every recovery decision is designed to be understandable.
 
-ReCart therefore follows a **bounded automation** model.
+Instead of:
 
-### AI decides within constraints
+> "AI decided to retry."
 
-The recovery engine can recommend an action, but it does not have unrestricted authority.
+ReCart exposes the reasoning behind the action:
 
-### Server-side enforcement
+```text
+WHY
 
-Recovery limits are enforced by the backend rather than trusted to the frontend.
+Payment failure is potentially recoverable.
 
-### Explicit actions
+WHAT
 
-Recovery operations are represented as structured actions instead of allowing arbitrary AI-generated execution.
+Create a recovery payment link.
 
-### Payment success is externally verified
+WHEN
 
-A recovery is not counted simply because:
+Execute within the configured recovery window.
 
-* a decision was generated
-* a notification was sent
-* a Payment Link was created
+CHANNEL
 
-The payment must actually be confirmed.
+WhatsApp.
 
-### Automatic escalation
+CONFIDENCE
 
-When automation reaches its permitted boundary, the system stops and flags the case for human follow-up.
+High.
 
-### Auditability
+RISK
 
-Important decisions, actions and outcomes remain traceable.
+Low.
+
+GUARDRAIL CHECK
+
+Passed.
+
+OUTCOME
+
+Pending payment confirmation.
+```
+
+This makes the system easier for merchants to trust, audit, and override.
 
 ---
 
-# 📈 Key Metrics
+# 🧾 Audit Trail
 
-## Total Exposed Revenue
+Every important recovery state transition can be recorded.
 
-The total value represented by tracked failed-payment opportunities.
-
-## Recovered Revenue
-
-Revenue successfully recovered and confirmed through the payment flow.
-
-## Still Recoverable
-
-Revenue associated with opportunities that can still be acted upon.
-
-## Escalated Revenue
-
-Revenue associated with cases where automated recovery has stopped and human follow-up is required.
-
-## Recovery Rate
+Example:
 
 ```text
-Recovered Opportunities
-──────────────────────── × 100
-Eligible Recovery Opportunities
+21:04:12
+Payment failed
+
+21:04:14
+Recovery opportunity detected
+
+21:04:15
+Recovery decision generated
+
+21:04:15
+Policy validation passed
+
+21:04:16
+Recovery action executed
+
+21:09:43
+Razorpay payment_link.paid received
+
+21:09:44
+Payment verified
+
+21:09:44
+Recovery marked RECOVERED
 ```
 
-## Recovery Attempts
-
-Number of recovery interventions executed.
-
----
-
-# 🛠️ Technology Stack
-
-### Frontend
-
-* React
-* TypeScript
-* Vite
-* Recovery Console UI
-
-### Backend
-
-* Node.js
-* TypeScript
-* Express
-* PostgreSQL
-
-### AI / Decisioning
-
-* AI-powered recovery decision and explanation layer
-* Structured recovery recommendations
-* Confidence and risk assessment
-
-### Payments
-
-* Razorpay Test Mode
-* Razorpay Payment Links
-* Razorpay Webhooks
-
-### Notifications
-
-* Resend
-* GREEN-API
-
-### Deployment
-
-* Railway
-
----
-
-# 🧪 Testing
-
-The core recovery workflow has been tested end-to-end using **Razorpay Test Mode**.
-
-## Email Recovery
-
-```text
-Payment Failure
-      ↓
-Recovery Decision
-      ↓
-Resend Notification
-      ↓
-Razorpay Payment Link
-      ↓
-Customer Checkout
-      ↓
-Razorpay Webhook
-      ↓
-Payment Verification
-      ↓
-RECOVERED
-```
-
-## WhatsApp Recovery
-
-```text
-Payment Failure
-      ↓
-Recovery Decision
-      ↓
-GREEN-API Notification
-      ↓
-Razorpay Payment Link
-      ↓
-Customer Checkout
-      ↓
-Razorpay Webhook
-      ↓
-Payment Verification
-      ↓
-RECOVERED
-```
-
-## Guardrail / Escalation
-
-```text
-Attempt 2
-      ↓
-Attempt 3
-      ↓
-Attempt 4 Requested
-      ↓
-Backend Rejects Retry
-      ↓
-ESCALATED
-      ↓
-Human Follow-up
-```
-
-The testing validates that ReCart contains an actual executable recovery workflow rather than only a dashboard or simulated recovery state.
-
----
-
-# 🖥️ Product Flow
-
-## Merchant
-
-```text
-Open Recovery Console
-        ↓
-View Revenue Exposure
-        ↓
-Inspect Recovery Opportunity
-        ↓
-View Diagnosis
-        ↓
-View AI Decision + Explanation
-        ↓
-Review Recovery State
-        ↓
-Track Outcome
-```
-
-## Customer
-
-```text
-Payment Fails
-      ↓
-Recovery Notification
-      ↓
-Razorpay Payment Link
-      ↓
-Customer Checkout
-      ↓
-Payment Completed
-```
-
-## System
-
-```text
-Payment Event
-      ↓
-Webhook
-      ↓
-Verification
-      ↓
-Recovery State Update
-      ↓
-Revenue Metrics
-      ↓
-Audit Trail
-```
-
----
-
-# 🧭 Design Principles
-
-### 1. Recover revenue, not just payments
-
-The goal is measurable recovered revenue.
-
-### 2. Explain every decision
-
-Merchants should understand why an intervention was selected.
-
-### 3. Separate intelligence from authority
-
-AI can recommend. Policy determines what may actually execute.
-
-### 4. Automate within boundaries
-
-Recovery automation must have explicit limits.
-
-### 5. Verify outcomes
-
-A recovery action is not equivalent to a successful payment.
-
-### 6. Escalate when automation should stop
-
-The safest action is sometimes to stop and involve a human.
-
-### 7. Make the system auditable
-
-Every important decision and state transition should be traceable.
-
----
-
-# 🚧 Future Improvements
-
-The architecture is designed to support further evolution, including:
-
-* richer customer-level recovery propensity
-* additional communication channels
-* smarter intervention selection
-* recovery-cost vs recovered-revenue optimization
-* merchant-configurable policies
-* A/B testing of recovery strategies
-* cohort and segment analytics
-* adaptive retry timing
-* learning from historical recovery outcomes
-
-These are **future extensions**, not dependencies for the current demonstrated recovery workflow.
-
-The long-term goal is to evolve ReCart from a payment recovery workflow into a broader:
-
-> **Revenue Recovery Decision Engine**
-
----
-
-# 🏆 Why ReCart Fits the AI Revenue Recovery Track
-
-Revenue recovery is not simply about detecting failed payments.
-
-A useful recovery agent should:
-
-```text
-DETECT
-  ↓
-UNDERSTAND
-  ↓
-DECIDE
-  ↓
-ACT
-  ↓
-VERIFY
-  ↓
-ESCALATE / CONTINUE
-```
-
-ReCart implements this loop around a real Razorpay payment workflow.
-
-It combines:
-
-**AI decision-making**
-
-*
-
-**Explainability**
-
-*
-
-**Server-side guardrails**
-
-*
-
-**Multi-channel recovery**
-
-*
-
-**Razorpay Payment Links**
-
-*
-
-**Webhook verification**
-
-*
-
-**Measurable recovery outcomes**
-
-The result is an agentic recovery system that can act autonomously **without being given unlimited authority**.
+This gives the merchant a complete view of **what happened, why it happened, and what the outcome was**.
 
 ---
 
 # 📁 Repository Structure
 
-A simplified representation of the project:
-
 ```text
 recart/
 │
-├── frontend/
-│   └── Recovery Console
-│
-├── backend/
-│   ├── recovery/
-│   │   ├── decision
-│   │   ├── actions
-│   │   └── policies
+├── artifacts/
 │   │
-│   ├── payments/
-│   │   ├── razorpay
-│   │   └── webhooks
+│   ├── api-server/
+│   │   └── src/
+│   │       ├── routes/
+│   │       │   ├── recovery.ts
+│   │       │   ├── razorpay.ts
+│   │       │   └── razorpay-webhook.ts
+│   │       │
+│   │       └── app.ts
 │   │
-│   └── database/
+│   └── recart-recovery-console/
+│       └── src/
+│           ├── components/
+│           ├── pages/
+│           │   ├── recovery.tsx
+│           │   ├── attempt-detail.tsx
+│           │   └── settings.tsx
+│           │
+│           ├── App.tsx
+│           └── main.tsx
 │
-├── docs/
+├── lib/
+│   ├── api-spec/
+│   │   └── openapi.yaml
+│   │
+│   ├── api-client-react/
+│   │   └── src/
+│   │
+│   ├── api-zod/
+│   │   └── src/
+│   │
+│   └── db/
+│       └── src/
+│           └── schema/
+│               ├── recovery.ts
+│               ├── audit.ts
+│               └── index.ts
 │
-├── tests/
+├── scripts/
 │
+├── package.json
+├── pnpm-workspace.yaml
 └── README.md
 ```
 
-> The exact directory structure may vary between development and deployment branches.
+---
+
+# ⚙️ Technology Stack
+
+| Layer           | Technology        |
+| --------------- | ----------------- |
+| Frontend        | React + Vite      |
+| Backend         | Node.js + Express |
+| Language        | TypeScript        |
+| Database        | PostgreSQL        |
+| API Contract    | OpenAPI + Zod     |
+| Payments        | Razorpay          |
+| Email           | Resend            |
+| WhatsApp        | GREEN-API         |
+| Deployment      | Railway           |
+| Package Manager | pnpm              |
 
 ---
 
-# ⚙️ Running Locally
+# 🚀 Deployment
 
-Clone the repository:
+ReCart is designed to run as a production-style web application.
 
-```bash
-git clone <repository-url>
-cd recart
+```text
+                    Internet
+                       │
+                       ▼
+              ┌─────────────────┐
+              │     Railway     │
+              │                 │
+              │  ReCart Server  │
+              └────────┬────────┘
+                       │
+              ┌────────┴────────┐
+              │                 │
+              ▼                 ▼
+        PostgreSQL          External APIs
+                           │
+                  ┌────────┼─────────┐
+                  ▼        ▼         ▼
+               Razorpay  Resend  GREEN-API
 ```
 
-Install the project dependencies according to the frontend and backend package configuration.
+Environment-specific secrets are kept outside the source code.
 
-Configure the required environment variables:
+Typical configuration includes:
 
-```env
-RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-RAZORPAY_WEBHOOK_SECRET=
-
-DATABASE_URL=
-
-AI_API_KEY=
+```text
+DATABASE_URL
+RAZORPAY_KEY_ID
+RAZORPAY_KEY_SECRET
+RAZORPAY_WEBHOOK_SECRET
+RESEND_API_KEY
+GREEN_API_INSTANCE
+GREEN_API_TOKEN
 ```
 
-Start the frontend and backend using the project's development commands.
+---
 
-For webhook testing, expose the backend webhook endpoint through a publicly reachable development URL and configure the corresponding Razorpay webhook.
+# 🧪 Test Mode Demo
 
-> Use Razorpay Test Mode credentials for development and demonstration.
+The current end-to-end recovery flow can be demonstrated using Razorpay Test Mode.
+
+```text
+1. Create / simulate failed payment
+              ↓
+2. ReCart detects recovery opportunity
+              ↓
+3. Recovery decision generated
+              ↓
+4. Guardrails validated
+              ↓
+5. Razorpay Payment Link created
+              ↓
+6. Customer opens Checkout
+              ↓
+7. Test payment completed
+              ↓
+8. Razorpay webhook received
+              ↓
+9. Payment verified
+              ↓
+10. Attempt marked RECOVERED
+              ↓
+11. Dashboard metrics updated
+```
+
+This demonstrates the complete loop from **failure → decision → action → payment → verification → recovered revenue**.
 
 ---
 
-# 🔗 Live Demo
+# 🔐 Security & Reliability Principles
 
-### Recovery Console
+ReCart follows several important principles:
 
-https://recart-console.up.railway.app
+### Server-side execution
 
-### Backend
+Sensitive payment operations are performed by the backend rather than directly from the browser.
 
-https://recart.up.railway.app
+### Policy enforcement
 
----
+Merchant limits are enforced server-side before actions are executed.
 
-# 📌 Project Status
+### Webhook-driven verification
 
-## Implemented
+Recovery is confirmed using payment events rather than trusting client-side state.
 
-* Failed payment detection
-* Revenue-at-risk tracking
-* Recovery opportunity creation
-* Failure diagnosis
-* Explainable recovery decisioning
-* Confidence and risk assessment
-* Channel selection
-* Bounded recovery actions
-* Server-side attempt limits
-* Retry cooldown
-* Recovery window
-* Incentive cap
-* Email recovery through Resend
-* WhatsApp recovery through GREEN-API
-* Razorpay Payment Link generation
-* Razorpay Checkout flow
-* Razorpay webhook processing
-* Confirmed recovery state
-* Recovered revenue tracking
-* Escalation to human follow-up
-* Recovery activity/audit trail
-* Live recovery dashboard
-* End-to-end Test Mode validation
+### Auditability
 
-## Future Evolution
+Recovery decisions and state transitions can be recorded for review.
 
-* More sophisticated recovery propensity
-* Additional recovery channels
-* Adaptive intervention optimization
-* Merchant-configurable recovery policies
-* A/B testing
-* Advanced cohort analytics
-* Continuous optimization from recovery outcomes
+### Bounded automation
+
+The agent operates within explicit limits rather than having unrestricted authority over merchant funds or customer communication.
 
 ---
 
-# 🏆 Built For
+# 🎥 Demo Story
+
+The recommended demo follows one failed payment through the complete recovery lifecycle.
+
+### Scene 1 — Revenue at Risk
+
+Show the dashboard.
+
+```text
+Revenue At Risk
+₹10,000
+```
+
+### Scene 2 — Failed Payment
+
+Open the failed payment/recovery attempt.
+
+Show:
+
+* failure context
+* customer/payment information
+* recovery opportunity
+
+### Scene 3 — AI Decision
+
+Show the explainable recovery recommendation.
+
+```text
+Recovery Recommended
+Confidence: High
+Risk: Low
+Channel: WhatsApp
+Action: Payment Link
+```
+
+### Scene 4 — Guardrail
+
+Show the merchant policy validation.
+
+```text
+Attempts: Allowed
+Cooldown: Passed
+Recovery Window: Passed
+Incentive: Within Limit
+```
+
+### Scene 5 — Execute
+
+Generate the Razorpay Payment Link and send the recovery intervention.
+
+### Scene 6 — Customer Pays
+
+Open the Razorpay Test Mode checkout and complete the payment.
+
+### Scene 7 — Webhook
+
+Show the incoming Razorpay payment event.
+
+```text
+payment_link.paid
+        ↓
+Verified
+        ↓
+Recovery Attempt Updated
+```
+
+### Scene 8 — Revenue Recovered
+
+Return to the dashboard.
+
+```text
+Recovered Revenue
+₹10,000
+
+Recovery Status
+RECOVERED
+```
+
+This tells a complete story:
+
+> **ReCart didn't just detect lost revenue — it acted on it and proved that the revenue came back.**
+
+---
+
+# 🏆 Why ReCart?
+
+Most payment systems answer:
+
+> **"Did the payment succeed?"**
+
+ReCart asks:
+
+> **"If the payment failed, can we recover the revenue — and what is the safest action to take?"**
+
+The system combines:
+
+* AI-powered decision making
+* explainable recommendations
+* merchant-defined guardrails
+* automated recovery execution
+* Razorpay payment infrastructure
+* multi-channel customer outreach
+* webhook-based verification
+* auditability
+* real-time recovery analytics
+
+The result is a **bounded autonomous revenue recovery system**, rather than another payment failure dashboard.
+
+---
+
+# 🗺️ Future Improvements
+
+Potential extensions include:
+
+* adaptive recovery strategies based on historical outcomes
+* merchant-specific recovery policies
+* richer customer segmentation
+* smarter channel selection
+* recovery probability modelling
+* automatic escalation to human operators
+* additional payment providers
+* recovery experiments and A/B testing
+* advanced revenue forecasting
+* learning from successful and unsuccessful interventions
+
+---
+
+# 👨‍💻 Built For
 
 **Razorpay AI Revenue Recovery Buildathon 2026**
 
@@ -1203,18 +818,12 @@ https://recart.up.railway.app
 
 **AI Revenue Recovery**
 
-### Project
+### Core Objective
 
-**ReCart — AI Revenue Recovery Console**
-
----
-
-# One-Line Pitch
-
-> **ReCart turns failed payments into recoverable revenue by deciding who to recover, explaining why, executing a bounded recovery action, and verifying the result end-to-end.**
+> Detect revenue at risk, determine the right intervention, and execute a bounded recovery workflow.
 
 ---
 
-# Final Principle
+# 📜 License
 
-> **Recover revenue aggressively enough to matter, but conservatively enough to trust.**
+This project is built as a hackathon / prototype implementation for the Razorpay AI Revenue Recovery Buildathon 2026.
