@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useRoute } from "wouter";
-import { ArrowUpRight, Copy, CreditCard, Mail, RefreshCw, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Copy, CreditCard, Mail, RefreshCw, ShieldCheck, UserRound } from "lucide-react";
 import {
   getGetRecoveryActivityQueryKey,
   getGetRecoveryAttemptQueryKey,
@@ -11,6 +11,22 @@ import {
   useRetryRecoveryAttempt,
 } from "@workspace/api-client-react";
 import { ActionButton, AppShell, BackLink, ErrorNotice, QueryState, StatusPill, formatMoney, shortDate, toneIcon } from "@/components/recovery-ui";
+
+function parseAuditMeta(meta?: string | null) {
+  if (!meta) return null;
+
+  try {
+    const parsed = JSON.parse(meta);
+
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // Metadata is plain text rather than JSON.
+  }
+
+  return null;
+}
 
 export default function AttemptDetailPage() {
   const [, params] = useRoute("/attempts/:id");
@@ -47,6 +63,32 @@ export default function AttemptDetailPage() {
             />
           </div>
 
+          <div className="decision-explanation">
+            <div className="decision-explanation-label">
+              <span className="decision-pulse" />
+              Why this action?
+            </div>
+
+            <p>{attempt.decision.reason}</p>
+
+            {attempt.decision.shouldRecover && !attempt.decision.shouldEscalate && (
+              <div className="decision-summary">
+                A standard recovery attempt was selected with{" "}
+                <strong>{attempt.decision.incentivePercent}% incentive</strong>{" "}
+                and a{" "}
+                <strong>{attempt.decision.delayMinutes} min delay</strong>.
+              </div>
+            )}
+
+            {attempt.decision.shouldEscalate && (
+              <div className="decision-summary">
+                The attempt requires human follow-up instead of automated recovery.
+              </div>
+            )}
+          </div>
+
+          <div className="decision-section-label">Decision signals</div>
+
           <div className="decision-grid">
             <div>
               <span>Diagnosis</span>
@@ -55,9 +97,31 @@ export default function AttemptDetailPage() {
 
             <div>
               <span>Risk</span>
-              <strong>{attempt.decision.riskLevel}</strong>
+              <strong className={`risk-${attempt.decision.riskLevel.toLowerCase()}`}>
+                {attempt.decision.riskLevel}
+              </strong>
             </div>
 
+            <div>
+              <span>Confidence</span>
+              <strong>
+                {Math.round(attempt.decision.confidence * 100)}%
+              </strong>
+
+              <div className="confidence-track">
+                <div
+                  className="confidence-fill"
+                  style={{
+                    width: `${Math.round(attempt.decision.confidence * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="decision-section-label">Execution plan</div>
+
+          <div className="decision-grid execution-grid">
             <div>
               <span>Channel</span>
               <strong>{attempt.decision.channel}</strong>
@@ -72,22 +136,13 @@ export default function AttemptDetailPage() {
               <span>Incentive</span>
               <strong>{attempt.decision.incentivePercent}%</strong>
             </div>
-
-            <div>
-              <span>Confidence</span>
-              <strong>
-                {Math.round(attempt.decision.confidence * 100)}%
-              </strong>
-            </div>
           </div>
+
           <div className="decision-reason">
             <span>Guardrail</span>
             <p>{attempt.decision.guardrail}</p>
           </div>
-          <div className="decision-reason">
-            <span>Reason</span>
-            <p>{attempt.decision.reason}</p>
-          </div>
+
           {attempt.razorpayPaymentLinkUrl && (
             <a
               href={attempt.razorpayPaymentLinkUrl}
@@ -101,7 +156,173 @@ export default function AttemptDetailPage() {
           )}
         </section>
       )}
-      <section className="panel audit-panel animate-rise-in animate-delay-2"><div className="panel-head"><div><div className="eyebrow">Immutable record</div><h2>Audit trail</h2></div><button data-testid="button-copy-attempt-id" className="button button-quiet" onClick={() => void navigator.clipboard?.writeText(attempt.id)}><Copy size={14} /> Copy ID</button></div><div className="audit-list">{audit.length ? audit.map((event, index) => { const Icon = toneIcon(event.type); return <div key={event.id} className="audit-event"><div className={`audit-icon audit-${event.type.includes("fail") ? "danger" : event.type.includes("recover") ? "success" : "neutral"}`}><Icon size={15} /></div><div className="audit-line" /><div className="audit-body"><div className="audit-title-row"><strong>{event.title}</strong><span className="audit-time">{shortDate(event.timestamp)}</span></div><p>{event.description}</p><div className="audit-meta"><span>{event.actor}</span>{event.meta && <><span className="meta-rule" /><span className="mono">{event.meta}</span></>}</div></div></div> }) : <div className="empty-audit"><ShieldCheck size={21} /><p>No audit events recorded yet.</p></div>}</div></section>
+
+      {attempt.status.toLowerCase() === "recovered" && (
+        <section className="panel outcome-panel animate-rise-in animate-delay-2">
+          <div className="outcome-header">
+            <div>
+              <div className="eyebrow">Recovery outcome</div>
+              <h2>Revenue recovered</h2>
+            </div>
+
+            <StatusPill status="recovered" />
+          </div>
+
+          <div className="outcome-main">
+            <div className="outcome-icon">
+              <CheckCircle2 size={22} />
+            </div>
+
+            <div>
+              <div className="outcome-amount">
+                {formatMoney(attempt.amount, attempt.currency)}
+              </div>
+
+              <div className="outcome-caption">
+                recovered revenue
+              </div>
+            </div>
+          </div>
+
+          <p className="outcome-message">
+            Payment captured successfully through the recovery payment link.
+          </p>
+
+          <div className="outcome-details">
+            <div>
+              <span>Recovery attempt</span>
+              <strong>
+                Retry {attempt.attempts} of {attempt.maxAttempts}
+              </strong>
+            </div>
+
+            <div>
+              <span>Channel</span>
+              <strong>{attempt.channel}</strong>
+            </div>
+
+            {attempt.razorpayPaymentLinkId && (
+              <div>
+                <span>Payment Link</span>
+                <strong className="mono">
+                  {attempt.razorpayPaymentLinkId}
+                </strong>
+              </div>
+            )}
+
+            {attempt.razorpayPaymentId && (
+              <div>
+                <span>Payment ID</span>
+                <strong className="mono">
+                  {attempt.razorpayPaymentId}
+                </strong>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+      
+      <section className="panel audit-panel animate-rise-in animate-delay-2"><div className="panel-head"><div><div className="eyebrow">Immutable record</div><h2>Audit trail</h2></div><button data-testid="button-copy-attempt-id" className="button button-quiet" onClick={() => void navigator.clipboard?.writeText(attempt.id)}><Copy size={14} /> Copy ID</button></div><div className="audit-list">{audit.length ? audit.map((event) => {
+        const Icon = toneIcon(event.type);
+        const meta = parseAuditMeta(event.meta);
+
+        return (
+          <div key={event.id} className="audit-event">
+            <div
+              className={`audit-icon audit-${
+                event.type.includes("fail")
+                  ? "danger"
+                  : event.type.includes("recover")
+                    ? "success"
+                    : "neutral"
+              }`}
+            >
+              <Icon size={15} />
+            </div>
+
+            <div className="audit-line" />
+
+            <div className="audit-body">
+              <div className="audit-title-row">
+                <strong>{event.title}</strong>
+                <span className="audit-time">
+                  {shortDate(event.timestamp)}
+                </span>
+              </div>
+
+              <p>{event.description}</p>
+
+              <div className="audit-meta">
+                <span>{event.actor}</span>
+                <span className="meta-rule" />
+
+                {meta ? (
+                  <div className="audit-details">
+                    {meta.channel != null && (
+                      <span>
+                        <b>Channel</b>
+                        {String(meta.channel)}
+                      </span>
+                    )}
+
+                    {meta.provider != null && (
+                      <span>
+                        <b>Provider</b>
+                        {String(meta.provider)}
+                      </span>
+                    )}
+
+                    {meta.paymentLink != null && (
+                      <span>
+                        <b>Payment Link</b>
+                        <code>{String(meta.paymentLink)}</code>
+                      </span>
+                    )}
+
+                    {meta.notificationSent != null && (
+                      <span
+                        className={
+                          meta.notificationSent
+                            ? "audit-success-value"
+                            : "audit-failure-value"
+                        }
+                      >
+                        <b>Notification</b>
+                        {meta.notificationSent ? "✓ Sent" : "✕ Not sent"}
+                      </span>
+                    )}
+
+                    {meta.event != null && (
+                      <span>
+                        <b>Event</b>
+                        <code>{String(meta.event)}</code>
+                      </span>
+                    )}
+
+                    {meta.paymentId != null && (
+                      <span>
+                        <b>Payment ID</b>
+                        <code>{String(meta.paymentId)}</code>
+                      </span>
+                    )}
+
+                    {meta.orderId != null && (
+                      <span>
+                        <b>Order ID</b>
+                        <code>{String(meta.orderId)}</code>
+                      </span>
+                    )}
+                  </div>
+                ) : event.meta ? (
+                  <span className="mono audit-plain-meta">
+                    {event.meta}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      }) : <div className="empty-audit"><ShieldCheck size={21} /><p>No audit events recorded yet.</p></div>}</div></section>
     </div><aside className="detail-side"><section className="side-card animate-rise-in animate-delay-2"><div className="side-card-title"><UserRound size={15} /> Customer</div><div className="side-person"><div className="large-avatar">{attempt.customer.slice(0, 1)}</div><div><strong>{attempt.customer}</strong><span>{attempt.email}</span></div></div><div className="side-details"><div><span>Payment method</span><strong><CreditCard size={13} /> {attempt.paymentMethod}</strong></div><div><span>Last action</span><strong>{attempt.lastAction}</strong><small>{shortDate(attempt.lastActionAt)}</small></div></div><button data-testid="button-contact-customer" className="button button-outline w-full" onClick={() => window.location.href = `mailto:${attempt.email}`}><Mail size={14} /> Contact customer</button></section><section className="bounded-note animate-rise-in animate-delay-3"><div className="bounded-note-icon"><ShieldCheck size={18} /></div><div><strong>Bounded by guardrails</strong><p>This attempt can run {Math.max(0, attempt.maxAttempts - attempt.attempts)} more time{attempt.maxAttempts - attempt.attempts === 1 ? "" : "s"}. Every action is logged.</p><Link href="/settings" data-testid="link-view-guardrails" className="text-button">View policy <ArrowUpRight size={13} /></Link></div></section></aside></div></>}</QueryState>
   </div></AppShell>;
 }
