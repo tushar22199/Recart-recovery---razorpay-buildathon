@@ -733,7 +733,13 @@ router.post("/recovery/attempts/:id/retry", async (req, res) => {
   const nextAttempts = existing.attempts + 1;
 
   // Decide before executing any external payment action.
-  const decision = decideRecoveryAction(existing, config);
+  const decision = decideRecoveryAction(
+    {
+      ...existing,
+      attempts: nextAttempts,
+    },
+    config,
+  );
 
   if (!decision.shouldRecover) {
     await db
