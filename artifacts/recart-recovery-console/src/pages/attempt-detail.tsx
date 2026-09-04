@@ -54,11 +54,13 @@ export default function AttemptDetailPage() {
 
             <StatusPill
               status={
-                attempt.decision.shouldEscalate
-                  ? "escalated"
-                  : attempt.decision.shouldRecover
-                    ? "recovering"
-                    : "closed"
+                attempt.status.toLowerCase() === "recovered"
+                  ? "recovered"
+                  : attempt.decision.shouldEscalate
+                    ? "escalated"
+                    : attempt.decision.shouldRecover
+                      ? "recovering"
+                      : "closed"
               }
             />
           </div>
@@ -323,6 +325,14 @@ export default function AttemptDetailPage() {
           </div>
         );
       }) : <div className="empty-audit"><ShieldCheck size={21} /><p>No audit events recorded yet.</p></div>}</div></section>
-    </div><aside className="detail-side"><section className="side-card animate-rise-in animate-delay-2"><div className="side-card-title"><UserRound size={15} /> Customer</div><div className="side-person"><div className="large-avatar">{attempt.customer.slice(0, 1)}</div><div><strong>{attempt.customer}</strong><span>{attempt.email}</span></div></div><div className="side-details"><div><span>Payment method</span><strong><CreditCard size={13} /> {attempt.paymentMethod}</strong></div><div><span>Last action</span><strong>{attempt.lastAction}</strong><small>{shortDate(attempt.lastActionAt)}</small></div></div><button data-testid="button-contact-customer" className="button button-outline w-full" onClick={() => window.location.href = `mailto:${attempt.email}`}><Mail size={14} /> Contact customer</button></section><section className="bounded-note animate-rise-in animate-delay-3"><div className="bounded-note-icon"><ShieldCheck size={18} /></div><div><strong>Bounded by guardrails</strong><p>This attempt can run {Math.max(0, attempt.maxAttempts - attempt.attempts)} more time{attempt.maxAttempts - attempt.attempts === 1 ? "" : "s"}. Every action is logged.</p><Link href="/settings" data-testid="link-view-guardrails" className="text-button">View policy <ArrowUpRight size={13} /></Link></div></section></aside></div></>}</QueryState>
+    </div><aside className="detail-side"><section className="side-card animate-rise-in animate-delay-2"><div className="side-card-title"><UserRound size={15} /> Customer</div><div className="side-person"><div className="large-avatar">{attempt.customer.slice(0, 1)}</div><div><strong>{attempt.customer}</strong><span>{attempt.email}</span></div></div><div className="side-details"><div><span>Payment method</span><strong><CreditCard size={13} /> {attempt.paymentMethod}</strong></div><div><span>Last action</span><strong>{attempt.lastAction}</strong><small>{shortDate(attempt.lastActionAt)}</small></div></div><button data-testid="button-contact-customer" className="button button-outline w-full" onClick={() => window.location.href = `mailto:${attempt.email}`}><Mail size={14} /> Contact customer</button></section><section className="bounded-note animate-rise-in animate-delay-3"><div className="bounded-note-icon"><ShieldCheck size={18} /></div><div><strong>Bounded by guardrails</strong><p>
+        {attempt.status.toLowerCase() === "recovered"
+          ? "Recovery completed successfully. No further automated actions are required."
+          : attempt.status.toLowerCase() === "escalated"
+            ? "Automation has stopped. Human follow-up is required."
+            : `This attempt can run ${Math.max(0, attempt.maxAttempts - attempt.attempts)} more time${
+                attempt.maxAttempts - attempt.attempts === 1 ? "" : "s"
+              }. Every action is logged.`}
+      </p><Link href="/settings" data-testid="link-view-guardrails" className="text-button">View policy <ArrowUpRight size={13} /></Link></div></section></aside></div></>}</QueryState>
   </div></AppShell>;
 }

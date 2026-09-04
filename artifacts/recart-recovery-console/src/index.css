@@ -774,7 +774,8 @@ body { letter-spacing: -0.01em; }
   color: var(--teal);
 }
 
-sk-low.risk-high {
+.ri,
+.risk-high {
   color: var(--coral);
 }
 
